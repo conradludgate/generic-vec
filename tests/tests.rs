@@ -21,15 +21,13 @@ macro_rules! S {
     ([$($e:expr),* $(,)?]) => {
         [$({
             let x = $e;
-            crate::to_string::assert(&x);
-            crate::to_string::TestToString::to_string(&x)
+            crate::to_string::to_string(&x)
         }),*]
     };
     ($l:expr) => {
         {
             let x = $l;
-            crate::to_string::assert(&x);
-            crate::to_string::TestToString::to_string(&x)
+            crate::to_string::to_string(&x)
         }
     };
 }
@@ -37,7 +35,9 @@ macro_rules! S {
 #[cfg(feature = "alloc")]
 mod to_string {
     pub trait TestToString: std::string::ToString {}
-    pub fn assert<T: TestToString>(_: &T) {}
+    pub fn to_string<T: TestToString>(t: &T) -> std::string::String {
+        t.to_string()
+    }
 
     impl TestToString for i32 {}
     impl TestToString for &i32 {}

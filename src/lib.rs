@@ -1,10 +1,6 @@
 #![cfg_attr(not(any(doc, feature = "std")), no_std)]
 #![cfg_attr(
     any(doc, feature = "nightly"),
-    feature(min_const_generics, unsafe_block_in_unsafe_fn)
-)]
-#![cfg_attr(
-    any(doc, feature = "nightly"),
     feature(
         trusted_len,
         min_specialization,
@@ -12,7 +8,7 @@
         allocator_api,
         alloc_layout_extra,
         const_panic,
-        const_fn,
+        const_fn_trait_bound,
         const_mut_refs,
         const_raw_ptr_deref,
         doc_cfg,

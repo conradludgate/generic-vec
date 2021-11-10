@@ -1,5 +1,5 @@
 [package]
-name = 'generic-vec'
+name = 'cl-generic-vec'
 version = '0.1.4'
 authors = ['Conrad Ludgate <conradludgate@gmail.com>']
 edition = '2021'

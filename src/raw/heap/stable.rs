@@ -53,7 +53,7 @@ impl<T> Heap<T> {
     /// If the capacity is non-zero
     /// * You must have allocated the pointer from the global allocator
     /// * The pointer must be valid to read-write for the range `ptr..ptr.add(capacity)`
-    pub const unsafe fn from_raw_parts(ptr: NonNull<T>, capacity: usize) -> Self { Self { ptr, capacity } }
+    pub const unsafe fn from_raw_parts(ptr: NonNull<T>, capacity: usize) -> Self { Self { capacity, ptr } }
 
     /// Convert a `Heap` storage into a pointer and capacity, without
     /// deallocating the storage

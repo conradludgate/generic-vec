@@ -19,7 +19,7 @@ struct AlignedBuffer<T, A> {
 /// elements.
 ///
 /// i.e. `UninitBuffer<[i32; 12]>` can store 12 `i32`s, but
-/// `UninitBuffer<[i32; 1], u64>` can store 2 `i32`s. Because `u64 is
+/// `UninitBuffer<[i32; 1], u64>` can store 2 `i32`s. Because `u64` is
 /// aligned to 8 bytes, so `round_up(4 bytes, 8 bytes) / 4 bytes == 2`
 ///
 /// You can query the capacity with [`UninitBuffer::capacity`]
@@ -49,7 +49,7 @@ struct AlignedBuffer<T, A> {
 #[repr(transparent)]
 pub struct UninitBuffer<T, A = u8>(MaybeUninit<AlignedBuffer<T, A>>);
 
-unsafe impl<T, A> Send for UninitBuffer<T, A> {}
+unsafe impl<T: Send, A: Send> Send for UninitBuffer<T, A> {}
 unsafe impl<T, A> Sync for UninitBuffer<T, A> {}
 
 const fn size<U, T, A>() -> usize {

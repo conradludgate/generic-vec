@@ -1,4 +1,4 @@
-//! The raw vector typse that back-up the [`GenericVec`](crate::GenericVec)
+//! The raw vector type that back-up the [`GenericVec`](crate::GenericVec)
 
 #[cfg(feature = "alloc")]
 use std::boxed::Box;
@@ -19,7 +19,7 @@ pub use slice::UninitSlice;
 pub use uninit::UninitBuffer;
 pub use zero_sized::ZeroSized;
 
-/// A [`Storage`] that can only contain initialized `Storage::Item`
+/// A [`Storage`] that can only contain initialized `T` values
 pub unsafe trait StorageInit<T>: Storage<T> {}
 
 /// A type that can hold `T`s, and potentially
@@ -82,7 +82,6 @@ pub unsafe trait StorageWithCapacity<T>: Storage<T> + Default {
     fn with_capacity(capacity: usize) -> Self;
 
     #[doc(hidden)]
-    #[inline(always)]
     #[allow(non_snake_case)]
     fn __with_capacity__const_capacity_checked(capacity: usize, _old_capacity: Option<usize>) -> Self {
         Self::with_capacity(capacity)
@@ -128,13 +127,11 @@ unsafe impl<T, S: ?Sized + Storage<T>> Storage<T> for Box<S> {
 
 #[cfg(any(doc, feature = "alloc"))]
 unsafe impl<T, S: ?Sized + StorageWithCapacity<T>> StorageWithCapacity<T> for Box<S> {
-    #[inline(always)]
     fn with_capacity(capacity: usize) -> Self { Box::new(S::with_capacity(capacity)) }
 
     #[doc(hidden)]
-    #[inline(always)]
     #[allow(non_snake_case)]
-    fn __with_capacity__const_capacity_checked(capacity: usize, _old_capacity: Option<usize>) -> Self {
-        Box::new(S::__with_capacity__const_capacity_checked(capacity, _old_capacity))
+    fn __with_capacity__const_capacity_checked(capacity: usize, old_capacity: Option<usize>) -> Self {
+        Box::new(S::__with_capacity__const_capacity_checked(capacity, old_capacity))
     }
 }

@@ -74,9 +74,8 @@ where
 
                 if do_take {
                     break Some(self.raw.take_front())
-                } else {
-                    self.raw.skip_front();
                 }
+                self.raw.skip_front();
             }
         }
     }
@@ -107,9 +106,8 @@ where
 
                 if do_take {
                     break Some(self.raw.take_back())
-                } else {
-                    self.raw.skip_back();
                 }
+                self.raw.skip_back();
             }
         }
     }

@@ -119,7 +119,7 @@ impl<'a, T, S: ?Sized + Storage<T>> Cursor<'a, T, S> {
     ///
     /// Creates 1 unfilled slot at the front of the `Cursor`.
     ///
-    /// # Panic
+    /// # Panics
     ///
     /// Panics if the `Cursor` is empty
     #[inline]
@@ -128,14 +128,14 @@ impl<'a, T, S: ?Sized + Storage<T>> Cursor<'a, T, S> {
         unsafe { self.raw.take_front() }
     }
 
-    /// Removes the last element of the `Cursor
+    /// Removes the last element of the `Cursor`
     /// and removes it from the underlying [`GenericVec`]
     ///
     /// Advances the `Cursor` by 1 element
     ///
     /// Creates 1 unfilled slot at the back of the `Cursor`.
     ///
-    /// # Panic
+    /// # Panics
     ///
     /// Panics if the `Cursor` is empty
     #[inline]
@@ -151,7 +151,7 @@ impl<'a, T, S: ?Sized + Storage<T>> Cursor<'a, T, S> {
     ///
     /// Creates 1 unfilled slot at the front of the `Cursor`.
     ///
-    /// # Panic
+    /// # Panics
     ///
     /// Panics if the `Cursor` is empty
     #[inline]
@@ -168,7 +168,7 @@ impl<'a, T, S: ?Sized + Storage<T>> Cursor<'a, T, S> {
     ///
     /// Creates 1 unfilled slot at the back of the `Cursor`.
     ///
-    /// # Panic
+    /// # Panics
     ///
     /// Panics if the `Cursor` is empty
     #[inline]
@@ -185,7 +185,7 @@ impl<'a, T, S: ?Sized + Storage<T>> Cursor<'a, T, S> {
     ///
     /// Creates `n` unfilled slots at the front of the `Cursor`.
     ///
-    /// # Panic
+    /// # Panics
     ///
     /// Panics if the `Cursor`'s length is less than `n`
     #[inline]
@@ -207,7 +207,7 @@ impl<'a, T, S: ?Sized + Storage<T>> Cursor<'a, T, S> {
     ///
     /// Creates `n` unfilled slots at the back of the `Cursor`.
     ///
-    /// # Panic
+    /// # Panics
     ///
     /// Panics if the `Cursor`'s length is less than `n`
     #[inline]
@@ -245,7 +245,7 @@ impl<'a, T, S: ?Sized + Storage<T>> Cursor<'a, T, S> {
     ///
     /// Fills in 1 unfilled slot at the front of the `Cursor`
     ///
-    /// # Panic
+    /// # Panics
     ///
     /// Panics if there are no unfilled slots at the front of the `Cursor`
     #[inline]
@@ -281,7 +281,7 @@ impl<'a, T, S: ?Sized + Storage<T>> Cursor<'a, T, S> {
     ///
     /// Fills in 1 unfilled slot at the back of the `Cursor`
     ///
-    /// # Panic
+    /// # Panics
     ///
     /// Panics if there are no unfilled slots at the back of the `Cursor`
     #[inline]
@@ -300,7 +300,7 @@ impl<'a, T, S: ?Sized + Storage<T>> Cursor<'a, T, S> {
     ///
     /// Fills in `slice.len()` unfilled slots at the front of the `Cursor`
     ///
-    /// # Panic
+    /// # Panics
     ///
     /// Panics if there are less than `slice.len()` unfilled slots
     /// at the front of the `Cursor`
@@ -325,7 +325,7 @@ impl<'a, T, S: ?Sized + Storage<T>> Cursor<'a, T, S> {
     ///
     /// Fills in `slice.len()` unfilled slots at the back of the `Cursor`
     ///
-    /// # Panic
+    /// # Panics
     ///
     /// Panics if there are less than `slice.len()` unfilled slots
     /// at the back of the `Cursor`
@@ -351,7 +351,7 @@ impl<'a, T, S: ?Sized + Storage<T>> Cursor<'a, T, S> {
     ///
     /// Does not change the number of unfilled slots.
     ///
-    /// # Panic
+    /// # Panics
     ///
     /// Panics if the `Cursor` is empty
     #[inline]
@@ -367,7 +367,7 @@ impl<'a, T, S: ?Sized + Storage<T>> Cursor<'a, T, S> {
     ///
     /// Does not change the number of unfilled slots.
     ///
-    /// # Panic
+    /// # Panics
     ///
     /// Panics if the `Cursor` is empty
     #[inline]
@@ -383,7 +383,7 @@ impl<'a, T, S: ?Sized + Storage<T>> Cursor<'a, T, S> {
     ///
     /// Does not change the number of unfilled slots.
     ///
-    /// # Panic
+    /// # Panics
     ///
     /// Panics if the `Cursor`'s length is less than `n`
     #[inline]
@@ -405,7 +405,7 @@ impl<'a, T, S: ?Sized + Storage<T>> Cursor<'a, T, S> {
     ///
     /// Does not change the number of unfilled slots.
     ///
-    /// # Panic
+    /// # Panics
     ///
     /// Panics if the `Cursor`'s length is less than `n`
     #[inline]
@@ -422,7 +422,7 @@ impl<'a, T, S: ?Sized + Storage<T>> Cursor<'a, T, S> {
 
     /// Reserve at least space unfilled slots in the `Cursor`
     ///
-    /// # Panic
+    /// # Panics
     ///
     /// * Panics if the `Cursor` is not empty
     /// * May panic if the underlying [`GenericVec`] cannot

@@ -9,8 +9,8 @@ use core::mem::{align_of, size_of, MaybeUninit};
 #[repr(transparent)]
 pub struct UninitSlice<T>([MaybeUninit<T>]);
 
-unsafe impl<T> Send for UninitSlice<T> {}
-unsafe impl<T> Sync for UninitSlice<T> {}
+unsafe impl<T: Send> Send for UninitSlice<T> {}
+unsafe impl<T: Sync> Sync for UninitSlice<T> {}
 
 #[cfg(not(feature = "nightly"))]
 impl<T> UninitSlice<T> {

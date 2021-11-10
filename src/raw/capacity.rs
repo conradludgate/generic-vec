@@ -14,7 +14,7 @@ pub(in crate::raw) fn fixed_capacity_reserve_error(capacity: usize, new_capacity
     target_pointer_width = "64"
 )))]
 compile_error!("Cannot correctly calculate capacity on an 128-bit or larger architecture");
-
+#[derive(Clone, Copy)]
 pub(in crate::raw) enum Round {
     Up,
     Down,

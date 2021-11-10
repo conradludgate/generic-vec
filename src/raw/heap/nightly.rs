@@ -95,11 +95,7 @@ impl<T, A: Allocator> Heap<T, A> {
     /// * You must have allocated the pointer from the given allocator
     /// * The pointer must be valid to read-write for the range `ptr..ptr.add(capacity)`
     pub const unsafe fn from_raw_parts_in(ptr: NonNull<T>, capacity: usize, allocator: A) -> Self {
-        Self {
-            ptr,
-            capacity,
-            allocator,
-        }
+        Self { capacity, ptr, allocator }
     }
 
     /// Convert a `Heap` storage into a pointer and capacity, without

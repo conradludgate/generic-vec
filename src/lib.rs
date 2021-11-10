@@ -7,7 +7,6 @@
         exact_size_is_empty,
         allocator_api,
         alloc_layout_extra,
-        const_panic,
         const_fn_trait_bound,
         const_mut_refs,
         const_raw_ptr_deref,
@@ -17,6 +16,8 @@
 #![cfg_attr(feature = "nightly", forbid(unsafe_op_in_unsafe_fn))]
 #![allow(unused_unsafe)]
 #![forbid(missing_docs, clippy::missing_safety_doc)]
+#![warn(clippy::pedantic)]
+#![allow(clippy::must_use_candidate, clippy::module_name_repetitions)]
 
 //! A vector that can store items anywhere: in slices, arrays, or the heap!
 //!
@@ -353,7 +354,7 @@ pub fn validate_spare<T>(spare_ptr: *const T, orig: &[T]) {
         unsafe { orig.as_ptr().add(orig.len()) == spare_ptr },
         "Tried to use `save_spare!` with a `SliceVec` that was not obtained from `GenricVec::spare_capacity_mut`. \
          This is undefined behavior on release mode!"
-    )
+    );
 }
 
 /// An array backed vector backed by potentially uninitialized memory
@@ -467,18 +468,10 @@ impl<T, B> TypeVec<T, B, T> {
 impl<T, B, A> TypeVec<T, B, A> {
     /// Create a new [`TypeVec`] with the given alignment type
     pub const fn with_align() -> Self {
-        #[cfg(not(feature = "nightly"))]
-        #[allow(clippy::no_effect)]
-        {
-            [()][(!<raw::UninitBuffer<B, A> as raw::Storage<T>>::IS_ALIGNED) as usize];
-        }
-        #[cfg(feature = "nightly")]
-        {
-            assert!(
-                <raw::UninitBuffer<B, A> as raw::Storage<T>>::IS_ALIGNED,
-                "Your buffer is not sufficiently aligned"
-            )
-        }
+        assert!(
+            <raw::UninitBuffer<B, A> as raw::Storage<T>>::IS_ALIGNED,
+            "Your buffer is not sufficiently aligned"
+        );
 
         Self {
             len: 0,
@@ -682,7 +675,7 @@ impl<T, S: ?Sized + Storage<T>> GenericVec<T, S> {
     ///
     /// # Safety
     ///
-    /// * new_len must be less than or equal to `capacity()`.
+    /// * `new_len` must be less than or equal to `capacity()`.
     /// * The elements at `old_len..new_len` must be initialized.
     pub unsafe fn set_len_unchecked(&mut self, len: usize) { self.len = len; }
 
@@ -780,7 +773,7 @@ impl<T, S: ?Sized + Storage<T>> GenericVec<T, S> {
             self.storage.reserve(match self.len().checked_add(additional) {
                 Some(new_capacity) => new_capacity,
                 None => allocation_failure(additional),
-            })
+            });
         }
     }
 
@@ -921,7 +914,7 @@ impl<T, S: ?Sized + Storage<T>> GenericVec<T, S> {
         }
     }
 
-    /// Resizes the [`GenericVec`] in-place so that len is equal to new_len.
+    /// Resizes the [`GenericVec`] in-place so that len is equal to `new_len`.
     ///
     /// If `new_len` is greater than `len`, the [`GenericVec`] is extended by the
     /// difference, with each additional slot filled with the result of calling
@@ -1792,7 +1785,7 @@ impl<T, S: ?Sized + Storage<T>> GenericVec<T, S> {
     }
 
     /// Creates a splicing iterator that replaces the specified range in the vector with
-    /// the given replace_with iterator and yields the removed items. replace_with does
+    /// the given `replace_with` iterator and yields the removed items. `replace_with` does
     /// not need to be the same length as range.
     ///
     /// range is removed even if the iterator is not consumed until the end.
@@ -1800,7 +1793,7 @@ impl<T, S: ?Sized + Storage<T>> GenericVec<T, S> {
     /// It is unspecified how many elements are removed from the vector if the
     /// [`Splice`](iter::Splice) value is leaked.
     ///
-    /// The input iterator replace_with is only consumed when the [`Splice`](iter::Splice)
+    /// The input iterator `replace_with` is only consumed when the [`Splice`](iter::Splice)
     /// value is dropped
     ///
     /// # Panic
@@ -1916,10 +1909,10 @@ impl<T, S: ?Sized + Storage<T>> GenericVec<T, S> {
     /// Removes all but the first of consecutive elements in the vector satisfying
     /// a given equality relation.
     ///
-    /// The same_bucket function is passed references to two elements from the
+    /// The `same_bucket` function is passed references to two elements from the
     /// vector and must determine if the elements compare equal. The elements
     /// are passed in opposite order from their order in the slice, so if
-    /// same_bucket(a, b) returns true, a is removed.
+    /// `same_bucket(a, b)` returns true, a is removed.
     ///
     /// If the vector is sorted, this removes all duplicates.
     pub fn dedup_by<F>(&mut self, same_bucket: F)
@@ -1953,7 +1946,7 @@ impl<T, S: ?Sized + Storage<T>> GenericVec<T, S> {
             }
         }
 
-        self.dedup_by(key_to_same_bucket(key))
+        self.dedup_by(key_to_same_bucket(key));
     }
 
     /// Removes all but the first of consecutive elements in the vector that resolve to the same key.
@@ -1972,6 +1965,6 @@ impl<T, S: ?Sized + Storage<T>> GenericVec<T, S> {
             move |a, b| f(a, b)
         }
 
-        self.dedup_by(eq_to_same_buckets(PartialEq::eq))
+        self.dedup_by(eq_to_same_buckets(PartialEq::eq));
     }
 }

@@ -1,3 +1,5 @@
+#![allow(clippy::cast_sign_loss)]
+
 use crate::{GenericVec, Storage};
 use core::{marker::PhantomData, ops::Range, ptr::NonNull};
 
@@ -271,7 +273,7 @@ impl<'a, T, S: ?Sized + Storage<T>> RawCursor<'a, T, S> {
         }
     }
 
-    /// Removes the last element of the `Cursor
+    /// Removes the last element of the `Cursor`
     /// and removes it from the underlying [`GenericVec`]
     ///
     /// Advances the `RawCursor` by 1 element
@@ -313,11 +315,11 @@ impl<'a, T, S: ?Sized + Storage<T>> RawCursor<'a, T, S> {
         unsafe {
             if Self::IS_ZS {
                 self.read_front = (self.read_front as usize).wrapping_add(1) as _;
-                Self::ZS_PTR.drop_in_place()
+                Self::ZS_PTR.drop_in_place();
             } else {
                 let read_front = self.read_front;
                 self.read_front = self.read_front.add(1);
-                read_front.drop_in_place()
+                read_front.drop_in_place();
             }
         }
     }
@@ -342,7 +344,7 @@ impl<'a, T, S: ?Sized + Storage<T>> RawCursor<'a, T, S> {
                 Self::ZS_PTR.drop_in_place();
             } else {
                 self.read_back = self.read_back.sub(1);
-                self.read_back.drop_in_place()
+                self.read_back.drop_in_place();
             }
         }
     }
@@ -376,7 +378,7 @@ impl<'a, T, S: ?Sized + Storage<T>> RawCursor<'a, T, S> {
                 read_front
             };
 
-            core::ptr::slice_from_raw_parts_mut(ptr, n).drop_in_place()
+            core::ptr::slice_from_raw_parts_mut(ptr, n).drop_in_place();
         }
     }
 
@@ -408,7 +410,7 @@ impl<'a, T, S: ?Sized + Storage<T>> RawCursor<'a, T, S> {
                 self.read_back
             };
 
-            core::ptr::slice_from_raw_parts_mut(ptr, n).drop_in_place()
+            core::ptr::slice_from_raw_parts_mut(ptr, n).drop_in_place();
         }
     }
 
@@ -646,7 +648,7 @@ impl<'a, T, S: ?Sized + Storage<T>> RawCursor<'a, T, S> {
 
     /// Reserve at least space unfilled slots in the `RawCursor`
     ///
-    /// # Panic
+    /// # Panics
     ///
     /// * Panics if the `RawCursor` is not empty
     /// * May panic if the underlying [`GenericVec`] cannot

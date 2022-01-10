@@ -1,9 +1,8 @@
 use crate::raw::{
-    capacity::{capacity, Round},
     AllocError, AllocResult, Storage, StorageWithCapacity,
 };
 
-use core::{alloc::Layout, mem::size_of, ptr::NonNull};
+use core::{alloc::Layout, ptr::NonNull};
 use std::{alloc::handle_alloc_error, mem::MaybeUninit};
 
 use std::alloc::{Allocator, Global};
@@ -96,14 +95,12 @@ unsafe impl<T, A: Allocator> Storage for Heap<T, A> {
     type Item = T;
 
     fn reserve(&mut self, new_capacity: usize) {
-        let new_capacity = capacity(new_capacity, size_of::<T>(), size_of::<T>(), Round::Up);
         if self.0.len() < new_capacity {
             let _ = self.reserve_slow(new_capacity, OnFailure::Abort);
         }
     }
 
     fn try_reserve(&mut self, new_capacity: usize) -> AllocResult {
-        let new_capacity = capacity(new_capacity, size_of::<T>(), size_of::<T>(), Round::Up);
         if self.0.len() < new_capacity {
             self.reserve_slow(new_capacity, OnFailure::Error)
         } else {
@@ -118,7 +115,7 @@ impl<T, A: Default + Allocator> Heap<T, A> {
 
 unsafe impl<T, A: Default + Allocator> StorageWithCapacity for Heap<T, A> {
     fn with_capacity(cap: usize) -> Self {
-        Self::with_capacity(capacity(cap, size_of::<T>(), size_of::<T>(), Round::Up))
+        Self::with_capacity(cap)
     }
 }
 

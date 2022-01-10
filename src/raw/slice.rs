@@ -1,9 +1,6 @@
-use crate::raw::{
-    capacity::{capacity, fixed_capacity_reserve_error, Round},
-    Storage,
-};
+use crate::raw::{capacity::fixed_capacity_reserve_error, Storage};
 
-use core::mem::{size_of, MaybeUninit};
+use core::mem::MaybeUninit;
 
 use super::{AllocError, AllocResult};
 
@@ -11,7 +8,6 @@ unsafe impl<T> Storage for [MaybeUninit<T>] {
     type Item = T;
 
     fn reserve(&mut self, new_capacity: usize) {
-        let new_capacity = capacity(new_capacity, size_of::<T>(), size_of::<T>(), Round::Up);
         if new_capacity > self.len() {
             fixed_capacity_reserve_error(self.len(), new_capacity)
         }

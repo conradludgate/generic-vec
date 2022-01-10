@@ -21,7 +21,7 @@ use crate::{
     GenericVec,
 };
 
-impl<V, T, S: StorageWithCapacity<T>> FromIterator<V> for GenericVec<T, S>
+impl<V, T, S: StorageWithCapacity<T> + Default> FromIterator<V> for GenericVec<T, S>
 where
     Self: Extend<V>,
 {

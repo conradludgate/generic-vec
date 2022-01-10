@@ -1,7 +1,5 @@
 use crate::{iter::RawCursor, Storage};
 
-use core::mem::ManuallyDrop;
-
 /// This struct is created by [`GenericVec::splice`](crate::GenericVec::splice).
 /// See its documentation for more.
 pub struct Splice<'a, T, S, I>
@@ -25,17 +23,6 @@ impl<T, S: ?Sized + Storage<T>, I: Iterator<Item = T>> Drop for Splice<'_, T, S,
 
         let Self { raw, replace_with } = self;
 
-        if let Some(storage) = crate::raw::ZeroSized::TRY_NEW {
-            unsafe {
-                let mut vec = ManuallyDrop::new(crate::ZSVec::with_storage(storage));
-                vec.extend(replace_with);
-                let len = vec.len();
-                raw.reserve(len);
-                raw.write_slice_front(vec.as_slice());
-                return
-            }
-        }
-
         if raw.at_back_of_vec() {
             self.raw.finish();
             unsafe { self.raw.vec_mut().extend(replace_with) }
@@ -53,7 +40,7 @@ impl<T, S: ?Sized + Storage<T>, I: Iterator<Item = T>> Drop for Splice<'_, T, S,
         {
             const CAPACITY: usize = 16;
 
-            let mut buffer = crate::uninit_array!(CAPACITY);
+            let mut buffer = crate::uninit_array::<_, CAPACITY>();
             let mut buffer = crate::SliceVec::new(&mut buffer);
 
             replace_with.for_each(|item| unsafe {

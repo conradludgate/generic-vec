@@ -1,6 +1,6 @@
 [package]
 name = 'cl-generic-vec'
-version = '0.1.4'
+version = '0.2.0'
 authors = ['Conrad Ludgate <conradludgate@gmail.com>']
 edition = '2021'
 license = 'MIT/Apache-2.0'
@@ -10,8 +10,7 @@ repository = 'https://github.com/conradludgate/generic-vec'
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-
-default = ['std']
+default = ['std', "nightly"]
 
 std = ['alloc']
 alloc = []

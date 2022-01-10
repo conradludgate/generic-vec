@@ -25,7 +25,7 @@ where
     fn clone_from(&mut self, source: &Self) { self.clone_from(source); }
 }
 
-impl<T, S: StorageWithCapacity<T>> Default for GenericVec<T, S> {
+impl<T, S: StorageWithCapacity<T> + Default> Default for GenericVec<T, S> {
     fn default() -> Self { Self::with_storage(Default::default()) }
 }
 
@@ -89,8 +89,12 @@ impl<T, const N: usize> From<[T; N]> for crate::ArrayVec<T, N> {
 }
 
 #[cfg(any(doc, feature = "nightly"))]
-impl<T: Copy, const N: usize> From<[T; N]> for crate::InitArrayVec<T, N> {
-    fn from(array: [T; N]) -> Self { crate::InitArrayVec::<T, N>::new(array) }
+impl<T, const N: usize> TryFrom<crate::ArrayVec<T, N>> for [T; N] {
+    type Error = crate::ArrayVec<T, N>;
+
+    fn try_from(value: crate::ArrayVec<T, N>) -> Result<Self, Self::Error> {
+        value.try_into_array()
+    }
 }
 
 #[cfg(not(doc))]

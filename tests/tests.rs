@@ -85,7 +85,7 @@ macro_rules! leak {
 mod array_vec {
     macro_rules! new_vec {
         ($vec:pat, max($len:expr)) => {
-            let $vec = generic_vec::ArrayVec::<_, $len>::new();
+            let $vec = cl_generic_vec::ArrayVec::<_, $len>::new();
         };
     }
 
@@ -95,83 +95,21 @@ mod array_vec {
 mod slice_vec {
     macro_rules! new_vec {
         ($vec:pat, max($len:expr)) => {
-            let mut buf = generic_vec::uninit_array!($len);
-            let $vec = generic_vec::SliceVec::new(&mut buf);
+            let mut buf = cl_generic_vec::uninit_array::<_, $len>();
+            let $vec = cl_generic_vec::SliceVec::new(&mut buf);
         };
     }
 
     make_tests_files!();
-}
-
-#[cfg(feature = "nightly")]
-mod init_array_vec {
-    macro_rules! new_vec {
-        ($vec:pat, max($len:expr)) => {
-            let mut vec = generic_vec::InitArrayVec::new([Default::default(); $len]);
-            vec.set_len(0);
-            let $vec = vec;
-        };
-    }
-
-    make_tests_files!(copy_only);
 }
 
 #[cfg(feature = "alloc")]
 mod heap_vec {
     macro_rules! new_vec {
         ($vec:pat, max($len:expr)) => {
-            let $vec = generic_vec::HeapVec::new();
+            let $vec = cl_generic_vec::HeapVec::new();
         };
     }
 
     make_tests_files!();
-}
-
-mod init_slice_vec {
-    macro_rules! new_vec {
-        ($vec:pat, max($len:expr)) => {
-            let mut buf = [Default::default(); $len];
-            let mut vec = generic_vec::InitSliceVec::new(&mut buf);
-            vec.set_len(0);
-            let $vec = vec;
-        };
-    }
-
-    make_tests_files!(copy_only);
-}
-
-#[cfg(feature = "std")]
-mod zero_sized {
-    use core::cell::Cell;
-    use generic_vec::ZSVec;
-
-    struct OnDrop;
-
-    thread_local! {
-        static COUNTER: Cell<u32> = Cell::new(0);
-    }
-
-    fn start() { COUNTER.with(|x| x.set(0)); }
-
-    fn get() -> u32 { COUNTER.with(|x| x.get()) }
-
-    impl Drop for OnDrop {
-        fn drop(&mut self) { COUNTER.with(|x| x.set(x.get() + 1)) }
-    }
-
-    #[test]
-    fn zero_sized() {
-        start();
-
-        let mut vec = ZSVec::new();
-
-        vec.push(OnDrop);
-        vec.push(OnDrop);
-        vec.push(OnDrop);
-
-        assert_eq!(vec.len(), 3);
-        assert_eq!(get(), 0);
-        drop(vec);
-        assert_eq!(get(), 3);
-    }
 }

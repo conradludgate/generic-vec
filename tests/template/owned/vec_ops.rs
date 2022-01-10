@@ -1,11 +1,11 @@
-use generic_vec::SliceVec;
+use cl_generic_vec::SliceVec;
 
 #[test]
 fn split_off() {
     let output = mockalloc::record_allocs(|| {
         new_vec!(mut vec, max(8));
         vec.extend((0..8).map(|x| S!(x)));
-        let mut other = generic_vec::uninit_array!(4);
+        let mut other = cl_generic_vec::uninit_array::<_, 4>();
         let mut other = SliceVec::new(&mut other);
         vec.split_off_into(4, &mut other);
         assert_eq!(vec, S!([0, 1, 2, 3]));
@@ -19,7 +19,7 @@ fn split_off() {
 fn consume_extend() {
     let output = mockalloc::record_allocs(|| {
         new_vec!(mut vec, max(4));
-        let mut other = generic_vec::uninit_array!(4);
+        let mut other = cl_generic_vec::uninit_array::<_, 4>();
         let mut other = SliceVec::new(&mut other);
         other.extend((0..4).map(|x| S!(x)));
         other.split_off_into(0, &mut vec);

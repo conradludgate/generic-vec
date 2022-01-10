@@ -1,20 +1,6 @@
-macro_rules! doc_heap {
-    ($($items:tt)*) => {
-        /// A heap storage that can reallocate if necessary,
-        ///
-        /// Usable with the `alloc` feature
-        $($items)*
-    }
-}
-
 #[cfg(any(doc, feature = "nightly"))]
-mod nightly;
+pub(crate) mod nightly;
 #[cfg(not(any(doc, feature = "nightly")))]
-mod stable;
-
-#[cfg(any(doc, feature = "nightly"))]
-pub use nightly::Heap;
-#[cfg(not(any(doc, feature = "nightly")))]
-pub use stable::Heap;
+pub(crate) mod stable;
 
 const INIT_ALLOC_CAPACITY: usize = 4;

@@ -6,13 +6,10 @@ use std::mem::MaybeUninit;
 
 mod array;
 #[cfg(any(doc, feature = "alloc"))]
-mod heap;
+pub(crate) mod heap;
 mod slice;
 
 mod capacity;
-
-#[cfg(any(doc, feature = "alloc"))]
-pub use heap::Heap;
 
 /// Error on failure to allocate
 pub struct AllocError;

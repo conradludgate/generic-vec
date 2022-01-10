@@ -7,77 +7,47 @@ use std::{
     ptr::NonNull,
 };
 
-doc_heap! {
-    #[cfg_attr(doc, doc(cfg(feature = "alloc")))]
-    pub struct Heap<T>(Box<[MaybeUninit<T>]>);
-}
-
-unsafe impl<T> Send for Heap<T> {}
-unsafe impl<T> Sync for Heap<T> {}
+type Heap<T> = Box<[MaybeUninit<T>]>;
 
 enum OnFailure {
     Abort,
     Error,
 }
 
-impl<T> Heap<T> {
-    /// Create a new zero-capacity heap vector
-    pub fn new() -> Self {
-        // // currently nightly only and non-const
-        // Self(Box::new_uninit_slice(0))
-        unsafe {
-            let capacity = if core::mem::size_of::<T>() == 0 { usize::MAX } else { 0 };
-            Self::from_raw_parts(NonNull::dangling(), capacity)
-        }
-    }
-
-    /// Create a new `Heap<T>`storage from the given pointer and capacity
-    ///
-    /// # Safety
-    ///
-    /// If the capacity is non-zero
-    /// * You must have allocated the pointer from the global allocator
-    /// * The pointer must be valid to read-write for the range `ptr..ptr.add(capacity)`
-    pub unsafe fn from_raw_parts(ptr: NonNull<T>, capacity: usize) -> Self {
-        let ptr = std::ptr::slice_from_raw_parts_mut(ptr.as_ptr().cast(), capacity);
-        Self(Box::from_raw(ptr))
-    }
-
-    /// Convert a `Heap` storage into a pointer and capacity, without
-    /// deallocating the storage
-    pub fn into_raw_parts(self) -> (NonNull<T>, usize) {
-        let ptr = Box::into_raw(self.0);
-        unsafe {
-            let capacity = (*ptr).len(); // probably not great but ptr_metadata is still nightly
-            (NonNull::new_unchecked(ptr.cast()), capacity)
-        }
-    }
+/// Create a new `Heap<T>`storage from the given pointer and capacity
+///
+/// # Safety
+///
+/// If the capacity is non-zero
+/// * You must have allocated the pointer from the global allocator
+/// * The pointer must be valid to read-write for the range `ptr..ptr.add(capacity)`
+pub(crate) unsafe fn box_from_raw_parts<T>(ptr: NonNull<T>, capacity: usize) -> Heap<T> {
+    let ptr = std::ptr::slice_from_raw_parts_mut(ptr.as_ptr().cast(), capacity);
+    Box::from_raw(ptr)
 }
 
-impl<T> Default for Heap<T> {
-    fn default() -> Self { Self::new() }
-}
-
-impl<T> AsRef<[MaybeUninit<T>]> for Heap<T> {
-    fn as_ref(&self) -> &[MaybeUninit<T>] { self.0.as_ref() }
-}
-
-impl<T> AsMut<[MaybeUninit<T>]> for Heap<T> {
-    fn as_mut(&mut self) -> &mut [MaybeUninit<T>] { self.0.as_mut() }
+/// Convert a `Heap` storage into a pointer and capacity, without
+/// deallocating the storage
+pub(crate) fn box_into_raw_parts<T>(b: Heap<T>) -> (NonNull<T>, usize) {
+    let ptr = Box::into_raw(b);
+    unsafe {
+        let capacity = (*ptr).len(); // probably not great but ptr_metadata is still nightly
+        (NonNull::new_unchecked(ptr.cast()), capacity)
+    }
 }
 
 unsafe impl<T> Storage for Heap<T> {
     type Item = T;
 
     fn reserve(&mut self, new_capacity: usize) {
-        if self.0.len() < new_capacity {
-            let _ = self.reserve_slow(new_capacity, OnFailure::Abort);
+        if self.len() < new_capacity {
+            let _ = reserve_slow(self, new_capacity, OnFailure::Abort);
         }
     }
 
     fn try_reserve(&mut self, new_capacity: usize) -> AllocResult {
-        if self.0.len() < new_capacity {
-            self.reserve_slow(new_capacity, OnFailure::Error)
+        if self.len() < new_capacity {
+            reserve_slow(self, new_capacity, OnFailure::Error)
         } else {
             Ok(())
         }
@@ -123,72 +93,68 @@ pub fn repeat(layout: Layout, n: usize) -> Result<Layout, ()> {
     unsafe { Ok(Layout::from_size_align_unchecked(alloc_size, layout.align())) }
 }
 
-impl<T> Heap<T> {
-    fn with_capacity(capacity: usize) -> Self {
-        if core::mem::size_of::<T>() == 0 {
-            return Self::new()
-        }
-
-        let layout = repeat(Layout::new::<T>(), capacity).expect("Invalid layout");
-
-        let ptr = unsafe { alloc(layout) };
-
-        let ptr = match core::ptr::NonNull::new(ptr) {
-            Some(ptr) => ptr,
-            None => handle_alloc_error(layout),
-        };
-
-        // Safety:
-        // we have allocated a pointer in global that has `capacity` elements available
-        unsafe { Self::from_raw_parts(ptr.cast(), capacity) }
+fn box_with_capacity<T>(capacity: usize) -> Heap<T> {
+    if core::mem::size_of::<T>() == 0 {
+        return Box::default()
     }
+
+    let layout = repeat(Layout::new::<T>(), capacity).expect("Invalid layout");
+
+    let ptr = unsafe { alloc(layout) };
+
+    let ptr = match core::ptr::NonNull::new(ptr) {
+        Some(ptr) => ptr,
+        None => handle_alloc_error(layout),
+    };
+
+    // Safety:
+    // we have allocated a pointer in global that has `capacity` elements available
+    unsafe { box_from_raw_parts(ptr.cast(), capacity) }
 }
 
 unsafe impl<T> StorageWithCapacity for Heap<T> {
-    fn with_capacity(cap: usize) -> Self { Self::with_capacity(cap) }
+    fn with_capacity(cap: usize) -> Self { box_with_capacity(cap) }
 }
 
-impl<T> Heap<T> {
-    #[cold]
-    #[inline(never)]
-    fn reserve_slow(&mut self, new_capacity: usize, on_failure: OnFailure) -> AllocResult {
-        assert!(new_capacity > self.0.len());
+#[cold]
+#[inline(never)]
+fn reserve_slow<T>(b: &mut Heap<T>, new_capacity: usize, on_failure: OnFailure) -> AllocResult {
+    assert!(new_capacity > b.len());
 
-        // taking a copy of the box so we can get it's contents and then update it later
-        // Safety:
-        // we forget the box just as soon we we copy it, so we have no risk of double-free
-        let (ptr, cap) = unsafe { Self::into_raw_parts(std::ptr::read(self)) };
+    // taking a copy of the box so we can get it's contents and then update it later
+    // Safety:
+    // we forget the box just as soon we we copy it, so we have no risk of double-free
+    let (ptr, cap) = unsafe { box_into_raw_parts(std::ptr::read(b)) };
 
-        // grow by at least doubling
-        let new_capacity = new_capacity
-            .max(cap.checked_mul(2).expect("Could not grow further"))
-            .max(super::INIT_ALLOC_CAPACITY);
-        let layout = repeat(Layout::new::<T>(), new_capacity).expect("Invalid layout");
+    // grow by at least doubling
+    let new_capacity = new_capacity
+        .max(cap.checked_mul(2).expect("Could not grow further"))
+        .max(super::INIT_ALLOC_CAPACITY);
+    let layout = repeat(Layout::new::<T>(), new_capacity).expect("Invalid layout");
 
-        let ptr = if cap == 0 {
-            unsafe { alloc(layout) }
-        } else {
-            let new_layout = layout;
-            let old_layout = repeat(Layout::new::<T>(), cap).expect("Invalid layout");
+    let ptr = if cap == 0 {
+        unsafe { alloc(layout) }
+    } else {
+        let new_layout = layout;
+        let old_layout = repeat(Layout::new::<T>(), cap).expect("Invalid layout");
 
-            unsafe { realloc(ptr.as_ptr().cast(), old_layout, new_layout.size()) }
-        };
+        unsafe { realloc(ptr.as_ptr().cast(), old_layout, new_layout.size()) }
+    };
 
-        let ptr = match (core::ptr::NonNull::new(ptr), on_failure) {
-            (Some(ptr), _) => ptr,
-            (None, OnFailure::Abort) => handle_alloc_error(layout),
-            (None, OnFailure::Error) => return Err(AllocError),
-        };
+    let ptr = match (core::ptr::NonNull::new(ptr), on_failure) {
+        (Some(ptr), _) => ptr,
+        (None, OnFailure::Abort) => handle_alloc_error(layout),
+        (None, OnFailure::Error) => return Err(AllocError),
+    };
 
-        // Creating a new Heap using the re-alloced pointer.
-        // Replacing the existing heap and forgetting it so
-        // that no drop code happens, avoiding the
-        unsafe {
-            let new = Self::from_raw_parts(ptr.cast(), new_capacity);
-            let old = std::mem::replace(self, new);
-            std::mem::forget(old);
-        }
-
-        Ok(())
+    // Creating a new Heap using the re-alloced pointer.
+    // Replacing the existing heap and forgetting it so
+    // that no drop code happens, avoiding the
+    unsafe {
+        let new = box_from_raw_parts(ptr.cast(), new_capacity);
+        let old = std::mem::replace(b, new);
+        std::mem::forget(old);
     }
+
+    Ok(())
 }

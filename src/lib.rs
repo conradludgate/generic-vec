@@ -34,7 +34,7 @@
 //! * `std` (default) - enables you to use an allocator, and
 //! * `alloc` - enables you to use an allocator, for heap allocated storages
 //!     (like [`Vec`])
-//! * `nightly` - enables you to use array (`[S::Item; N]`) based storages
+//! * `nightly` - enables you to use the Allocator trait
 //!
 //! # Basic Usage
 //!
@@ -129,12 +129,12 @@ pub use core;
 /// A heap backed vector with a growable capacity
 #[cfg(any(doc, all(feature = "alloc", feature = "nightly")))]
 #[cfg_attr(doc, doc(cfg(all(feature = "alloc", feature = "nightly"))))]
-pub type HeapVec<T, A = std::alloc::Global> = GenericVec<raw::Heap<T, A>>;
+pub type HeapVec<T, A = std::alloc::Global> = GenericVec<Box<[MaybeUninit<T>], A>>;
 
 /// A heap backed vector with a growable capacity
 #[cfg(all(not(doc), feature = "alloc", not(feature = "nightly")))]
 #[cfg_attr(doc, doc(cfg(feature = "alloc")))]
-pub type HeapVec<T> = GenericVec<raw::Heap<T>>;
+pub type HeapVec<T> = GenericVec<Box<[MaybeUninit<T>]>>;
 
 /// An array backed vector backed by potentially uninitialized memory
 pub type ArrayVec<T, const N: usize> = GenericVec<[MaybeUninit<T>; N]>;
@@ -376,7 +376,7 @@ impl<T> HeapVec<T> {
     pub fn new() -> Self {
         Self {
             len: 0,
-            storage: raw::Heap::new(),
+            storage: Box::<[MaybeUninit<T>]>::default(),
         }
     }
 }
@@ -385,7 +385,7 @@ impl<T> HeapVec<T> {
 #[cfg_attr(doc, doc(cfg(all(feature = "nightly", feature = "alloc"))))]
 impl<T, A: std::alloc::Allocator> HeapVec<T, A> {
     /// Create a new empty `HeapVec` with the given allocator
-    pub fn with_alloc(alloc: A) -> Self { Self::with_storage(raw::Heap::with_alloc(alloc)) }
+    pub fn with_alloc(alloc: A) -> Self { Self::with_storage(Box::new_uninit_slice_in(0, alloc)) }
 }
 
 impl<'a, T> SliceVec<'a, T> {

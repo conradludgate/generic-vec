@@ -92,9 +92,7 @@ impl<T, const N: usize> From<[T; N]> for crate::ArrayVec<T, N> {
 impl<T, const N: usize> TryFrom<crate::ArrayVec<T, N>> for [T; N] {
     type Error = crate::ArrayVec<T, N>;
 
-    fn try_from(value: crate::ArrayVec<T, N>) -> Result<Self, Self::Error> {
-        value.try_into_array()
-    }
+    fn try_from(value: crate::ArrayVec<T, N>) -> Result<Self, Self::Error> { value.try_into_array() }
 }
 
 #[cfg(not(doc))]
@@ -108,7 +106,7 @@ impl<T> From<Vec<T>> for crate::HeapVec<T> {
         let cap = vec.capacity();
         let ptr = unsafe { NonNull::new_unchecked(vec.as_mut_ptr()) };
 
-        unsafe { crate::HeapVec::from_raw_parts(len, crate::raw::Heap::from_raw_parts(ptr, cap)) }
+        unsafe { crate::HeapVec::from_raw_parts(len, crate::raw::heap::stable::box_from_raw_parts(ptr, cap)) }
     }
 }
 
@@ -121,7 +119,7 @@ impl<T, A: std::alloc::Allocator> From<Vec<T, A>> for crate::HeapVec<T, A> {
         unsafe {
             crate::HeapVec::from_raw_parts(
                 len,
-                crate::raw::Heap::from_raw_parts_in(NonNull::new_unchecked(ptr), cap, alloc),
+                crate::raw::heap::nightly::box_from_raw_parts_in(NonNull::new_unchecked(ptr), cap, alloc),
             )
         }
     }
@@ -133,7 +131,7 @@ impl<T, A: std::alloc::Allocator> From<Vec<T, A>> for crate::HeapVec<T, A> {
 impl<T> From<crate::HeapVec<T>> for Vec<T> {
     fn from(vec: crate::HeapVec<T>) -> Self {
         let (length, alloc) = vec.into_raw_parts();
-        let (ptr, capacity) = alloc.into_raw_parts();
+        let (ptr, capacity) = crate::raw::heap::stable::box_into_raw_parts(alloc);
 
         unsafe { Vec::from_raw_parts(ptr.as_ptr(), length, capacity) }
     }
@@ -144,7 +142,7 @@ impl<T> From<crate::HeapVec<T>> for Vec<T> {
 impl<T, A: std::alloc::Allocator> From<crate::HeapVec<T, A>> for Vec<T, A> {
     fn from(vec: crate::HeapVec<T, A>) -> Self {
         let (length, alloc) = vec.into_raw_parts();
-        let (ptr, capacity, alloc) = alloc.into_raw_parts_with_alloc();
+        let (ptr, capacity, alloc) = crate::raw::heap::nightly::box_into_raw_parts_with_alloc(alloc);
 
         unsafe { Vec::from_raw_parts_in(ptr.as_ptr(), length, capacity, alloc) }
     }

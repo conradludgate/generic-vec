@@ -83,7 +83,7 @@ unsafe impl<S: ?Sized + Storage> Storage for &mut S {
     fn try_reserve(&mut self, new_capacity: usize) -> AllocResult { S::try_reserve(self, new_capacity) }
 }
 
-/// Wrapper for a Box<S>. Needed to implement some traits that could not be implemented on Box directly
+/// Wrapper for a [`Box<S>`]. Needed to implement some traits that could not be implemented on Box directly
 pub struct BoxStorage<S: ?Sized + Storage>(pub Box<S>);
 
 impl<S: ?Sized + Storage> AsRef<[MaybeUninit<S::Item>]> for BoxStorage<S> {

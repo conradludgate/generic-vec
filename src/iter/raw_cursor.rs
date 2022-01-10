@@ -4,29 +4,29 @@ use crate::{GenericVec, Storage};
 use core::{marker::PhantomData, ops::Range, ptr::NonNull};
 
 /// This struct is created by [`GenericVec::raw_cursor`]. See its documentation for more.
-pub struct RawCursor<'a, T, S: ?Sized + Storage<T>> {
-    vec: NonNull<GenericVec<T, S>>,
+pub struct RawCursor<'a, S: ?Sized + Storage> {
+    vec: NonNull<GenericVec<S>>,
     old_vec_len: usize,
-    write_front: *mut T,
-    read_front: *mut T,
-    read_back: *mut T,
-    write_back: *mut T,
-    mark: PhantomData<&'a mut GenericVec<T, S>>,
+    write_front: *mut S::Item,
+    read_front: *mut S::Item,
+    read_back: *mut S::Item,
+    write_back: *mut S::Item,
+    mark: PhantomData<&'a mut GenericVec<S>>,
 }
 
-unsafe impl<T: Send, S: ?Sized + Storage<T> + Send> Send for RawCursor<'_, T, S> {}
-unsafe impl<T: Sync, S: ?Sized + Storage<T> + Sync> Sync for RawCursor<'_, T, S> {}
+unsafe impl<S: ?Sized + Storage + Send> Send for RawCursor<'_, S> where S::Item: Send {}
+unsafe impl<S: ?Sized + Storage + Sync> Sync for RawCursor<'_, S> where S::Item: Sync {}
 
-impl<T, S: ?Sized + Storage<T>> Drop for RawCursor<'_, T, S> {
+impl<S: ?Sized + Storage> Drop for RawCursor<'_, S> {
     fn drop(&mut self) { self.finish() }
 }
 
-impl<'a, T, S: ?Sized + Storage<T>> RawCursor<'a, T, S> {
-    pub(crate) const IS_ZS: bool = core::mem::size_of::<T>() == 0;
-    const ZS_PTR: *mut T = NonNull::<T>::dangling().as_ptr();
+impl<'a, S: ?Sized + Storage> RawCursor<'a, S> {
+    pub(crate) const IS_ZS: bool = core::mem::size_of::<S::Item>() == 0;
+    const ZS_PTR: *mut S::Item = NonNull::<S::Item>::dangling().as_ptr();
 
     #[inline]
-    pub(crate) fn new(vec: &'a mut GenericVec<T, S>, Range { start, end }: Range<usize>) -> Self {
+    pub(crate) fn new(vec: &'a mut GenericVec<S>, Range { start, end }: Range<usize>) -> Self {
         unsafe {
             let mut raw_vec = NonNull::from(vec);
             let vec = raw_vec.as_mut();
@@ -104,7 +104,7 @@ impl<'a, T, S: ?Sized + Storage<T>> RawCursor<'a, T, S> {
     }
 
     /// Get a mutable reference to the underlying vector
-    pub(crate) unsafe fn vec_mut(&mut self) -> &mut GenericVec<T, S> { unsafe { self.vec.as_mut() } }
+    pub(crate) unsafe fn vec_mut(&mut self) -> &mut GenericVec<S> { unsafe { self.vec.as_mut() } }
 
     /// The number of remaining elements in range of this `RawCursor`
     ///
@@ -188,7 +188,7 @@ impl<'a, T, S: ?Sized + Storage<T>> RawCursor<'a, T, S> {
     ///
     /// The `RawCursor` must not be empty
     #[inline]
-    pub unsafe fn front(&self) -> &T {
+    pub unsafe fn front(&self) -> &S::Item {
         if Self::IS_ZS {
             unsafe { &*Self::ZS_PTR }
         } else {
@@ -205,7 +205,7 @@ impl<'a, T, S: ?Sized + Storage<T>> RawCursor<'a, T, S> {
     ///
     /// The `RawCursor` must not be empty
     #[inline]
-    pub unsafe fn front_mut(&mut self) -> &mut T {
+    pub unsafe fn front_mut(&mut self) -> &mut S::Item {
         if Self::IS_ZS {
             unsafe { &mut *Self::ZS_PTR }
         } else {
@@ -222,7 +222,7 @@ impl<'a, T, S: ?Sized + Storage<T>> RawCursor<'a, T, S> {
     ///
     /// The `RawCursor` must not be empty
     #[inline]
-    pub unsafe fn back(&self) -> &T {
+    pub unsafe fn back(&self) -> &S::Item {
         if Self::IS_ZS {
             unsafe { &*Self::ZS_PTR }
         } else {
@@ -239,7 +239,7 @@ impl<'a, T, S: ?Sized + Storage<T>> RawCursor<'a, T, S> {
     ///
     /// The `RawCursor` must not be empty
     #[inline]
-    pub unsafe fn back_mut(&mut self) -> &mut T {
+    pub unsafe fn back_mut(&mut self) -> &mut S::Item {
         if Self::IS_ZS {
             unsafe { &mut *Self::ZS_PTR }
         } else {
@@ -258,7 +258,7 @@ impl<'a, T, S: ?Sized + Storage<T>> RawCursor<'a, T, S> {
     ///
     /// The `RawCursor` must not be empty
     #[inline]
-    pub unsafe fn take_front(&mut self) -> T {
+    pub unsafe fn take_front(&mut self) -> S::Item {
         debug_assert!(!self.is_empty(), "Cannot take from a empty `RawCursor`");
 
         unsafe {
@@ -284,7 +284,7 @@ impl<'a, T, S: ?Sized + Storage<T>> RawCursor<'a, T, S> {
     ///
     /// The `RawCursor` must not be empty
     #[inline]
-    pub unsafe fn take_back(&mut self) -> T {
+    pub unsafe fn take_back(&mut self) -> S::Item {
         debug_assert!(!self.is_empty(), "Cannot take from a empty `RawCursor`");
 
         unsafe {
@@ -423,7 +423,7 @@ impl<'a, T, S: ?Sized + Storage<T>> RawCursor<'a, T, S> {
     ///
     /// There must be at least 1 unfilled slot at the front of the `RawCursor`
     #[inline]
-    pub unsafe fn write_front(&mut self, value: T) {
+    pub unsafe fn write_front(&mut self, value: S::Item) {
         debug_assert!(
             !self.is_write_front_empty(),
             "Cannot write to a empty `RawCursor` or if there are not unfilled slots at the front of the `RawCursor`"
@@ -449,7 +449,7 @@ impl<'a, T, S: ?Sized + Storage<T>> RawCursor<'a, T, S> {
     ///
     /// There must be at least 1 unfilled slot at the back of the `RawCursor`
     #[inline]
-    pub unsafe fn write_back(&mut self, value: T) {
+    pub unsafe fn write_back(&mut self, value: S::Item) {
         debug_assert!(
             !self.is_write_back_empty(),
             "Cannot write to a empty `RawCursor` or if there are not unfilled slots at the back of the `RawCursor`"
@@ -477,7 +477,7 @@ impl<'a, T, S: ?Sized + Storage<T>> RawCursor<'a, T, S> {
     /// * There must be at least `slice.len()` unfilled slots
     ///   at the front of the `RawCursor`
     /// * You must not drop any of the values in `slice`
-    pub unsafe fn write_slice_front(&mut self, slice: &[T]) {
+    pub unsafe fn write_slice_front(&mut self, slice: &[S::Item]) {
         unsafe {
             let write_front_len = self.write_front_len();
             debug_assert!(
@@ -507,7 +507,7 @@ impl<'a, T, S: ?Sized + Storage<T>> RawCursor<'a, T, S> {
     /// * There must be at least `slice.len()` unfilled slots
     ///   at the back of the `RawCursor`
     /// * You must not drop any of the values in `slice`
-    pub unsafe fn write_slice_back(&mut self, slice: &[T]) {
+    pub unsafe fn write_slice_back(&mut self, slice: &[S::Item]) {
         let write_back_len = self.write_back_len();
         debug_assert!(
             write_back_len >= slice.len(),
@@ -544,7 +544,7 @@ impl<'a, T, S: ?Sized + Storage<T>> RawCursor<'a, T, S> {
             if Self::IS_ZS {
                 self.skip_n_front(1);
             } else {
-                if self.write_front as *const T != self.read_front {
+                if self.write_front as *const S::Item != self.read_front {
                     self.write_front.copy_from_nonoverlapping(self.read_front, 1);
                 }
                 self.read_front = self.read_front.add(1);
@@ -573,7 +573,7 @@ impl<'a, T, S: ?Sized + Storage<T>> RawCursor<'a, T, S> {
             } else {
                 self.read_back = self.read_back.sub(1);
                 self.write_back = self.write_back.sub(1);
-                if self.write_back as *const T != self.read_back {
+                if self.write_back as *const S::Item != self.read_back {
                     self.write_back.copy_from_nonoverlapping(self.read_back, 1);
                 }
             }
@@ -604,7 +604,7 @@ impl<'a, T, S: ?Sized + Storage<T>> RawCursor<'a, T, S> {
                 self.read_front = (self.read_front as usize).wrapping_add(n) as _;
                 self.write_front = (self.write_front as usize).wrapping_add(n) as _;
             } else {
-                if self.write_front as *const T != self.read_front {
+                if self.write_front as *const S::Item != self.read_front {
                     self.write_front.copy_from(self.read_front, n);
                 }
                 self.read_front = self.read_front.add(n);
@@ -639,7 +639,7 @@ impl<'a, T, S: ?Sized + Storage<T>> RawCursor<'a, T, S> {
             } else {
                 self.read_back = self.read_back.sub(n);
                 self.write_back = self.write_back.sub(n);
-                if self.write_back as *const T != self.read_back {
+                if self.write_back as *const S::Item != self.read_back {
                     self.write_back.copy_from(self.read_back, n);
                 }
             }

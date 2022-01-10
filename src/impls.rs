@@ -12,9 +12,9 @@ use core::{
 #[cfg(feature = "alloc")]
 use std::vec::Vec;
 
-impl<T, S: StorageWithCapacity<T>> Clone for GenericVec<T, S>
+impl<S: StorageWithCapacity> Clone for GenericVec<S>
 where
-    T: Clone,
+    S::Item: Clone,
 {
     fn clone(&self) -> Self {
         let mut vec = Self::with_capacity(self.len());
@@ -25,62 +25,62 @@ where
     fn clone_from(&mut self, source: &Self) { self.clone_from(source); }
 }
 
-impl<T, S: StorageWithCapacity<T> + Default> Default for GenericVec<T, S> {
+impl<S: StorageWithCapacity + Default> Default for GenericVec<S> {
     fn default() -> Self { Self::with_storage(Default::default()) }
 }
 
-impl<T, O: ?Sized + AsRef<[T]>, S: ?Sized + Storage<T>> PartialEq<O> for GenericVec<T, S>
+impl<O: ?Sized + AsRef<[S::Item]>, S: ?Sized + Storage> PartialEq<O> for GenericVec<S>
 where
-    T: PartialEq,
+    S::Item: PartialEq,
 {
     fn eq(&self, other: &O) -> bool { self.as_slice() == other.as_ref() }
 }
 
-impl<T, S: ?Sized + Storage<T>> Eq for GenericVec<T, S> where T: Eq {}
+impl<S: ?Sized + Storage> Eq for GenericVec<S> where S::Item: Eq {}
 
-impl<T, O: ?Sized + AsRef<[T]>, S: ?Sized + Storage<T>> PartialOrd<O> for GenericVec<T, S>
+impl<O: ?Sized + AsRef<[S::Item]>, S: ?Sized + Storage> PartialOrd<O> for GenericVec<S>
 where
-    T: PartialOrd,
+    S::Item: PartialOrd,
 {
     fn partial_cmp(&self, other: &O) -> Option<core::cmp::Ordering> { self.as_slice().partial_cmp(other.as_ref()) }
 }
 
-impl<T, S: ?Sized + Storage<T>> Ord for GenericVec<T, S>
+impl<S: ?Sized + Storage> Ord for GenericVec<S>
 where
-    T: Ord,
+    S::Item: Ord,
 {
     fn cmp(&self, other: &Self) -> core::cmp::Ordering { self.as_slice().cmp(other.as_ref()) }
 }
 
-impl<T, S: ?Sized + Storage<T>> Hash for GenericVec<T, S>
+impl<S: ?Sized + Storage> Hash for GenericVec<S>
 where
-    T: Hash,
+    S::Item: Hash,
 {
     fn hash<H: Hasher>(&self, state: &mut H) { self.as_slice().hash(state) }
 }
 
 use core::fmt;
-impl<T, S: ?Sized + Storage<T>> fmt::Debug for GenericVec<T, S>
+impl<S: ?Sized + Storage> fmt::Debug for GenericVec<S>
 where
-    T: fmt::Debug,
+    S::Item: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { self.as_slice().fmt(f) }
 }
 
-impl<T, S: ?Sized + Storage<T>> AsRef<[T]> for GenericVec<T, S> {
-    fn as_ref(&self) -> &[T] { self }
+impl<S: ?Sized + Storage> AsRef<[S::Item]> for GenericVec<S> {
+    fn as_ref(&self) -> &[S::Item] { self }
 }
 
-impl<T, S: ?Sized + Storage<T>> AsMut<[T]> for GenericVec<T, S> {
-    fn as_mut(&mut self) -> &mut [T] { self }
+impl<S: ?Sized + Storage> AsMut<[S::Item]> for GenericVec<S> {
+    fn as_mut(&mut self) -> &mut [S::Item] { self }
 }
 
-impl<T, S: ?Sized + Storage<T>> Borrow<[T]> for GenericVec<T, S> {
-    fn borrow(&self) -> &[T] { self }
+impl<S: ?Sized + Storage> Borrow<[S::Item]> for GenericVec<S> {
+    fn borrow(&self) -> &[S::Item] { self }
 }
 
-impl<T, S: ?Sized + Storage<T>> BorrowMut<[T]> for GenericVec<T, S> {
-    fn borrow_mut(&mut self) -> &mut [T] { self }
+impl<S: ?Sized + Storage> BorrowMut<[S::Item]> for GenericVec<S> {
+    fn borrow_mut(&mut self) -> &mut [S::Item] { self }
 }
 
 #[cfg(any(doc, feature = "nightly"))]
@@ -150,18 +150,18 @@ impl<T, A: std::alloc::Allocator> From<crate::HeapVec<T, A>> for Vec<T, A> {
     }
 }
 
-impl<T, S: Storage<T> + ?Sized, I> Index<I> for GenericVec<T, S>
+impl<S: Storage + ?Sized, I> Index<I> for GenericVec<S>
 where
-    I: SliceIndex<[T]>,
+    I: SliceIndex<[S::Item]>,
 {
     type Output = I::Output;
 
     fn index(&self, index: I) -> &Self::Output { self.as_slice().index(index) }
 }
 
-impl<T, S: Storage<T> + ?Sized, I> IndexMut<I> for GenericVec<T, S>
+impl<S: Storage + ?Sized, I> IndexMut<I> for GenericVec<S>
 where
-    I: SliceIndex<[T]>,
+    I: SliceIndex<[S::Item]>,
 {
     fn index_mut(&mut self, index: I) -> &mut Self::Output { self.as_mut_slice().index_mut(index) }
 }

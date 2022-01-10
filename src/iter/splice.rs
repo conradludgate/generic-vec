@@ -2,20 +2,20 @@ use crate::{iter::RawCursor, Storage};
 
 /// This struct is created by [`GenericVec::splice`](crate::GenericVec::splice).
 /// See its documentation for more.
-pub struct Splice<'a, T, S, I>
+pub struct Splice<'a, S, I>
 where
-    S: ?Sized + Storage<T>,
-    I: Iterator<Item = T>,
+    S: ?Sized + Storage,
+    I: Iterator<Item = S::Item>,
 {
-    raw: RawCursor<'a, T, S>,
+    raw: RawCursor<'a, S>,
     replace_with: I,
 }
 
-impl<'a, T, S: ?Sized + Storage<T>, I: Iterator<Item = T>> Splice<'a, T, S, I> {
-    pub(crate) fn new(raw: RawCursor<'a, T, S>, replace_with: I) -> Self { Self { raw, replace_with } }
+impl<'a, S: ?Sized + Storage, I: Iterator<Item = S::Item>> Splice<'a, S, I> {
+    pub(crate) fn new(raw: RawCursor<'a, S>, replace_with: I) -> Self { Self { raw, replace_with } }
 }
 
-impl<T, S: ?Sized + Storage<T>, I: Iterator<Item = T>> Drop for Splice<'_, T, S, I> {
+impl<S: ?Sized + Storage, I: Iterator<Item = S::Item>> Drop for Splice<'_, S, I> {
     fn drop(&mut self) {
         unsafe {
             self.raw.drop_n_front(self.raw.len());
@@ -64,7 +64,7 @@ impl<T, S: ?Sized + Storage<T>, I: Iterator<Item = T>> Drop for Splice<'_, T, S,
 
         #[cfg(feature = "alloc")]
         {
-            let mut temp: std::vec::Vec<T> = replace_with.collect();
+            let mut temp: std::vec::Vec<S::Item> = replace_with.collect();
 
             unsafe {
                 raw.reserve(temp.len());
@@ -75,9 +75,9 @@ impl<T, S: ?Sized + Storage<T>, I: Iterator<Item = T>> Drop for Splice<'_, T, S,
     }
 }
 
-impl<T, S: ?Sized + Storage<T>, I: Iterator<Item = T>> ExactSizeIterator for Splice<'_, T, S, I> {}
+impl<S: ?Sized + Storage, I: Iterator<Item = S::Item>> ExactSizeIterator for Splice<'_, S, I> {}
 
-impl<'a, T, S: ?Sized + Storage<T>, I: Iterator<Item = T>> Iterator for Splice<'a, T, S, I> {
+impl<'a, S: ?Sized + Storage, I: Iterator<Item = S::Item>> Iterator for Splice<'a, S, I> {
     type Item = I::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -94,7 +94,7 @@ impl<'a, T, S: ?Sized + Storage<T>, I: Iterator<Item = T>> Iterator for Splice<'
     }
 }
 
-impl<'a, T, S: ?Sized + Storage<T>, I: Iterator<Item = T>> DoubleEndedIterator for Splice<'a, T, S, I> {
+impl<'a, S: ?Sized + Storage, I: Iterator<Item = S::Item>> DoubleEndedIterator for Splice<'a, S, I> {
     fn next_back(&mut self) -> Option<Self::Item> {
         if self.raw.is_empty() {
             None

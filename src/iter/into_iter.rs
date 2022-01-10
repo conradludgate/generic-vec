@@ -9,12 +9,12 @@ use core::{
 
 /// This struct is created by [`GenericVec::into_iter`](crate::GenericVec::into_iter).
 /// See its documentation for more.
-pub struct IntoIter<T, S: ?Sized + Storage<T>> {
+pub struct IntoIter<S: ?Sized + Storage> {
     index: usize,
-    vec: ManuallyDrop<GenericVec<T, S>>,
+    vec: ManuallyDrop<GenericVec<S>>,
 }
 
-impl<T, S: ?Sized + Storage<T>> Drop for IntoIter<T, S> {
+impl<S: ?Sized + Storage> Drop for IntoIter<S> {
     fn drop(&mut self) {
         unsafe {
             struct DropAlloc<'a, S: ?Sized>(&'a mut S);
@@ -31,15 +31,15 @@ impl<T, S: ?Sized + Storage<T>> Drop for IntoIter<T, S> {
             let index = self.index;
 
             let drop_alloc = DropAlloc(&mut self.vec.storage);
-            let data = drop_alloc.0.as_mut_ptr().add(index);
+            let data = drop_alloc.0.as_mut().as_mut_ptr().add(index);
             core::ptr::slice_from_raw_parts_mut(data, len.wrapping_sub(index)).drop_in_place();
         }
     }
 }
 
-impl<T, S: Storage<T>> IntoIterator for GenericVec<T, S> {
-    type IntoIter = IntoIter<T, S>;
-    type Item = T;
+impl<S: Storage> IntoIterator for GenericVec<S> {
+    type IntoIter = IntoIter<S>;
+    type Item = S::Item;
 
     fn into_iter(self) -> Self::IntoIter {
         IntoIter {
@@ -49,32 +49,32 @@ impl<T, S: Storage<T>> IntoIterator for GenericVec<T, S> {
     }
 }
 
-impl<'a, T, S: ?Sized + Storage<T>> IntoIterator for &'a mut GenericVec<T, S> {
-    type IntoIter = core::slice::IterMut<'a, T>;
-    type Item = &'a mut T;
+impl<'a, S: ?Sized + Storage> IntoIterator for &'a mut GenericVec<S> {
+    type IntoIter = core::slice::IterMut<'a, S::Item>;
+    type Item = &'a mut S::Item;
 
     fn into_iter(self) -> Self::IntoIter { self.iter_mut() }
 }
 
-impl<'a, T, S: ?Sized + Storage<T>> IntoIterator for &'a GenericVec<T, S> {
-    type IntoIter = core::slice::Iter<'a, T>;
-    type Item = &'a T;
+impl<'a, S: ?Sized + Storage> IntoIterator for &'a GenericVec<S> {
+    type IntoIter = core::slice::Iter<'a, S::Item>;
+    type Item = &'a S::Item;
 
     fn into_iter(self) -> Self::IntoIter { self.iter() }
 }
 
-impl<T, S: ?Sized + Storage<T>> FusedIterator for IntoIter<T, S> {}
-impl<T, S: ?Sized + Storage<T>> ExactSizeIterator for IntoIter<T, S> {
+impl<S: ?Sized + Storage> FusedIterator for IntoIter<S> {}
+impl<S: ?Sized + Storage> ExactSizeIterator for IntoIter<S> {
     #[cfg(feature = "nightly")]
     fn is_empty(&self) -> bool { self.index == self.vec.len() }
 }
 
 #[cfg(feature = "nightly")]
-unsafe impl<T, S: ?Sized + Storage<T>> TrustedLen for IntoIter<T, S> {}
+unsafe impl<S: ?Sized + Storage> TrustedLen for IntoIter<S> {}
 
-impl<T, S: ?Sized + Storage<T>> IntoIter<T, S> {
+impl<S: ?Sized + Storage> IntoIter<S> {
     /// Get a slice to the remaining elements in the iterator
-    pub fn as_slice(&self) -> &[T] {
+    pub fn as_slice(&self) -> &[S::Item] {
         let index = self.index;
         let len = self.vec.len();
         let ptr = self.vec.as_ptr();
@@ -82,7 +82,7 @@ impl<T, S: ?Sized + Storage<T>> IntoIter<T, S> {
     }
 
     /// Get a mutable slice to the remaining elements in the iterator
-    pub fn as_mut_slice(&mut self) -> &mut [T] {
+    pub fn as_mut_slice(&mut self) -> &mut [S::Item] {
         let index = self.index;
         let len = self.vec.len();
         let ptr = self.vec.as_mut_ptr();
@@ -90,8 +90,8 @@ impl<T, S: ?Sized + Storage<T>> IntoIter<T, S> {
     }
 }
 
-impl<T, S: ?Sized + Storage<T>> Iterator for IntoIter<T, S> {
-    type Item = T;
+impl<S: ?Sized + Storage> Iterator for IntoIter<S> {
+    type Item = S::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index == self.vec.len() {
@@ -130,7 +130,7 @@ impl<T, S: ?Sized + Storage<T>> Iterator for IntoIter<T, S> {
     }
 }
 
-impl<T, S: ?Sized + Storage<T>> DoubleEndedIterator for IntoIter<T, S> {
+impl<S: ?Sized + Storage> DoubleEndedIterator for IntoIter<S> {
     fn next_back(&mut self) -> Option<Self::Item> {
         if self.index == self.vec.len() {
             None

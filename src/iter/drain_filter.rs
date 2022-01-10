@@ -4,12 +4,12 @@ use core::iter::FusedIterator;
 
 /// This struct is created by [`GenericVec::drain_filter`](crate::GenericVec::drain_filter).
 /// See its documentation for more.
-pub struct DrainFilter<'a, T, S, F>
+pub struct DrainFilter<'a, S, F>
 where
-    S: ?Sized + Storage<T>,
-    F: FnMut(&mut T) -> bool,
+    S: ?Sized + Storage,
+    F: FnMut(&mut S::Item) -> bool,
 {
-    raw: RawCursor<'a, T, S>,
+    raw: RawCursor<'a, S>,
     filter: F,
     panicking: bool,
 }
@@ -20,12 +20,12 @@ impl<'a> Drop for SetOnDrop<'a> {
     fn drop(&mut self) { *self.0 = true; }
 }
 
-impl<'a, T, S, F> DrainFilter<'a, T, S, F>
+impl<'a, S, F> DrainFilter<'a, S, F>
 where
-    S: ?Sized + Storage<T>,
-    F: FnMut(&mut T) -> bool,
+    S: ?Sized + Storage,
+    F: FnMut(&mut S::Item) -> bool,
 {
-    pub(crate) fn new(raw: RawCursor<'a, T, S>, filter: F) -> Self {
+    pub(crate) fn new(raw: RawCursor<'a, S>, filter: F) -> Self {
         Self {
             raw,
             filter,
@@ -34,10 +34,10 @@ where
     }
 }
 
-impl<T, S, F> Drop for DrainFilter<'_, T, S, F>
+impl<S, F> Drop for DrainFilter<'_, S, F>
 where
-    S: ?Sized + Storage<T>,
-    F: FnMut(&mut T) -> bool,
+    S: ?Sized + Storage,
+    F: FnMut(&mut S::Item) -> bool,
 {
     fn drop(&mut self) {
         if !self.panicking {
@@ -46,18 +46,18 @@ where
     }
 }
 
-impl<T, S, F> FusedIterator for DrainFilter<'_, T, S, F>
+impl<S, F> FusedIterator for DrainFilter<'_, S, F>
 where
-    S: ?Sized + Storage<T>,
-    F: FnMut(&mut T) -> bool,
+    S: ?Sized + Storage,
+    F: FnMut(&mut S::Item) -> bool,
 {
 }
-impl<T, S, F> Iterator for DrainFilter<'_, T, S, F>
+impl<S, F> Iterator for DrainFilter<'_, S, F>
 where
-    S: ?Sized + Storage<T>,
-    F: FnMut(&mut T) -> bool,
+    S: ?Sized + Storage,
+    F: FnMut(&mut S::Item) -> bool,
 {
-    type Item = T;
+    type Item = S::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
@@ -86,10 +86,10 @@ where
     }
 }
 
-impl<T, S, F> DoubleEndedIterator for DrainFilter<'_, T, S, F>
+impl<S, F> DoubleEndedIterator for DrainFilter<'_, S, F>
 where
-    S: ?Sized + Storage<T>,
-    F: FnMut(&mut T) -> bool,
+    S: ?Sized + Storage,
+    F: FnMut(&mut S::Item) -> bool,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
         loop {

@@ -21,7 +21,7 @@ use crate::{
     GenericVec,
 };
 
-impl<V, T, S: StorageWithCapacity<T> + Default> FromIterator<V> for GenericVec<T, S>
+impl<V, S: StorageWithCapacity + Default> FromIterator<V> for GenericVec<S>
 where
     Self: Extend<V>,
 {
@@ -33,20 +33,11 @@ where
     }
 }
 
-impl<T, S: ?Sized + Storage<T>> Extend<T> for GenericVec<T, S> {
-    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+impl<S: ?Sized + Storage> Extend<S::Item> for GenericVec<S> {
+    fn extend<I: IntoIterator<Item = S::Item>>(&mut self, iter: I) {
         let iter = iter.into_iter();
         let _ = self.try_reserve(iter.size_hint().0);
         #[allow(clippy::drop_ref)]
         iter.for_each(|item| drop(self.push(item)));
-    }
-}
-
-impl<'a, T: 'a + Clone, S: ?Sized + Storage<T>> Extend<&'a T> for GenericVec<T, S> {
-    fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
-        let iter = iter.into_iter();
-        let _ = self.try_reserve(iter.size_hint().0);
-        #[allow(clippy::drop_ref)]
-        iter.cloned().for_each(|item| drop(self.push(item)));
     }
 }

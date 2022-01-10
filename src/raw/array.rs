@@ -1,7 +1,12 @@
-use crate::{raw::{Storage, StorageWithCapacity}, uninit_array};
+use crate::{
+    raw::{Storage, StorageWithCapacity},
+    uninit_array,
+};
 use std::mem::MaybeUninit;
 
-unsafe impl<T, const N: usize> StorageWithCapacity<T> for [MaybeUninit<T>; N] {
+use super::{AllocError, AllocResult};
+
+unsafe impl<T, const N: usize> StorageWithCapacity for [MaybeUninit<T>; N] {
     fn with_capacity(capacity: usize) -> Self {
         if capacity > N {
             crate::raw::capacity::fixed_capacity_reserve_error(N, capacity)
@@ -21,16 +26,11 @@ unsafe impl<T, const N: usize> StorageWithCapacity<T> for [MaybeUninit<T>; N] {
     }
 }
 
-unsafe impl<T, const N: usize> Storage<T> for [MaybeUninit<T>; N] {
+unsafe impl<T, const N: usize> Storage for [MaybeUninit<T>; N] {
+    type Item = T;
+
     #[doc(hidden)]
     const CONST_CAPACITY: Option<usize> = Some(N);
-    const IS_ALIGNED: bool = true;
-
-    fn capacity(&self) -> usize { N }
-
-    fn as_ptr(&self) -> *const T { self[..].as_ptr().cast() }
-
-    fn as_mut_ptr(&mut self) -> *mut T { self[..].as_mut_ptr().cast() }
 
     fn reserve(&mut self, capacity: usize) {
         if capacity > N {
@@ -38,5 +38,11 @@ unsafe impl<T, const N: usize> Storage<T> for [MaybeUninit<T>; N] {
         }
     }
 
-    fn try_reserve(&mut self, capacity: usize) -> bool { capacity <= N }
+    fn try_reserve(&mut self, capacity: usize) -> AllocResult {
+        if capacity <= N {
+            Ok(())
+        } else {
+            Err(AllocError)
+        }
+    }
 }

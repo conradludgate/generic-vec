@@ -3,10 +3,12 @@
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 extern crate alloc as std;
 
+use cl_generic_vec::{ArrayVec, GenericVec};
 #[cfg(feature = "alloc")]
 use mockalloc::Mockalloc;
 #[cfg(feature = "std")]
 use std::alloc::System;
+use std::mem::MaybeUninit;
 
 #[global_allocator]
 #[cfg(feature = "std")]
@@ -112,4 +114,21 @@ mod heap_vec {
     }
 
     make_tests_files!();
+}
+
+#[test]
+fn unsized_slice_vec() {
+    let mut array_vec = ArrayVec::<i32, 16>::new();
+
+    array_vec.push(1);
+    assert_eq!(array_vec.len(), 1);
+    assert_eq!(array_vec.capacity(), 16);
+    assert_eq!(array_vec, [1]);
+
+    let slice_vec: &mut GenericVec<[MaybeUninit<i32>]> = &mut array_vec;
+
+    slice_vec.push(2);
+    assert_eq!(slice_vec.len(), 2);
+    assert_eq!(slice_vec.capacity(), 16);
+    assert_eq!(*slice_vec, [1, 2]);
 }

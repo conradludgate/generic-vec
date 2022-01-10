@@ -2,19 +2,19 @@
 use crate::{iter::RawCursor, GenericVec, Storage};
 
 /// This struct is created by [`GenericVec::cursor`]. See its documentation for more.
-pub struct Cursor<'a, T, S: ?Sized + Storage<T>> {
-    raw: RawCursor<'a, T, S>,
+pub struct Cursor<'a, S: ?Sized + Storage> {
+    raw: RawCursor<'a, S>,
 }
 
-impl<'a, T, S: ?Sized + Storage<T>> Cursor<'a, T, S> {
+impl<'a, S: ?Sized + Storage> Cursor<'a, S> {
     #[inline]
-    pub(crate) fn new(raw: RawCursor<'a, T, S>) -> Self { Self { raw } }
+    pub(crate) fn new(raw: RawCursor<'a, S>) -> Self { Self { raw } }
 
     /// Get a mutable reference to the underlying `RawCursor`
     ///
     /// Updating the state of the underlying `RawCursor` does
     /// update the state of this `Cursor`
-    pub fn as_raw_cursor_mut(&mut self) -> &mut RawCursor<'a, T, S> { &mut self.raw }
+    pub fn as_raw_cursor_mut(&mut self) -> &mut RawCursor<'a, S> { &mut self.raw }
 
     /// The number of remaining elements in range of this `Cursor`
     ///
@@ -62,7 +62,7 @@ impl<'a, T, S: ?Sized + Storage<T>> Cursor<'a, T, S> {
     /// Note: this does *not* advance the `Cursor` or
     /// change the number of unfilled slots
     #[inline]
-    pub fn front(&self) -> Option<&T> {
+    pub fn front(&self) -> Option<&S::Item> {
         if self.is_empty() {
             None
         } else {
@@ -76,7 +76,7 @@ impl<'a, T, S: ?Sized + Storage<T>> Cursor<'a, T, S> {
     /// Note: this does *not* advance the `Cursor` or
     /// change the number of unfilled slots
     #[inline]
-    pub fn front_mut(&mut self) -> Option<&mut T> {
+    pub fn front_mut(&mut self) -> Option<&mut S::Item> {
         if self.is_empty() {
             None
         } else {
@@ -90,7 +90,7 @@ impl<'a, T, S: ?Sized + Storage<T>> Cursor<'a, T, S> {
     /// Note: this does *not* advance the `Cursor` or
     /// change the number of unfilled slots
     #[inline]
-    pub fn back(&self) -> Option<&T> {
+    pub fn back(&self) -> Option<&S::Item> {
         if self.is_empty() {
             None
         } else {
@@ -104,7 +104,7 @@ impl<'a, T, S: ?Sized + Storage<T>> Cursor<'a, T, S> {
     /// Note: this does *not* advance the `Cursor` or
     /// change the number of unfilled slots
     #[inline]
-    pub fn back_mut(&mut self) -> Option<&mut T> {
+    pub fn back_mut(&mut self) -> Option<&mut S::Item> {
         if self.is_empty() {
             None
         } else {
@@ -123,7 +123,7 @@ impl<'a, T, S: ?Sized + Storage<T>> Cursor<'a, T, S> {
     ///
     /// Panics if the `Cursor` is empty
     #[inline]
-    pub fn take_front(&mut self) -> T {
+    pub fn take_front(&mut self) -> S::Item {
         assert!(!self.is_empty(), "Cannot take from a empty `Cursor`");
         unsafe { self.raw.take_front() }
     }
@@ -139,7 +139,7 @@ impl<'a, T, S: ?Sized + Storage<T>> Cursor<'a, T, S> {
     ///
     /// Panics if the `Cursor` is empty
     #[inline]
-    pub fn take_back(&mut self) -> T {
+    pub fn take_back(&mut self) -> S::Item {
         assert!(!self.is_empty(), "Cannot take from a empty `Cursor`");
         unsafe { self.raw.take_back() }
     }
@@ -231,7 +231,7 @@ impl<'a, T, S: ?Sized + Storage<T>> Cursor<'a, T, S> {
     ///
     /// Fills in 1 unfilled slot at the front of the `Cursor` on success
     #[inline]
-    pub fn try_write_front(&mut self, value: T) -> Result<(), T> {
+    pub fn try_write_front(&mut self, value: S::Item) -> Result<(), S::Item> {
         if self.is_write_front_empty() {
             unsafe { self.raw.write_front(value) }
             Ok(())
@@ -249,7 +249,7 @@ impl<'a, T, S: ?Sized + Storage<T>> Cursor<'a, T, S> {
     ///
     /// Panics if there are no unfilled slots at the front of the `Cursor`
     #[inline]
-    pub fn write_front(&mut self, value: T) {
+    pub fn write_front(&mut self, value: S::Item) {
         assert!(
             !self.is_write_front_empty(),
             "Cannot write to a empty `Cursor` or if there are not unfilled slots at the front of the `Cursor`"
@@ -267,7 +267,7 @@ impl<'a, T, S: ?Sized + Storage<T>> Cursor<'a, T, S> {
     ///
     /// Fills in 1 unfilled slot at the back of the `Cursor` on success
     #[inline]
-    pub fn try_write_back(&mut self, value: T) -> Result<(), T> {
+    pub fn try_write_back(&mut self, value: S::Item) -> Result<(), S::Item> {
         if self.is_write_back_empty() {
             Err(value)
         } else {
@@ -285,7 +285,7 @@ impl<'a, T, S: ?Sized + Storage<T>> Cursor<'a, T, S> {
     ///
     /// Panics if there are no unfilled slots at the back of the `Cursor`
     #[inline]
-    pub fn write_back(&mut self, value: T) {
+    pub fn write_back(&mut self, value: S::Item) {
         assert!(
             !self.is_write_back_empty(),
             "Cannot write to a empty `Cursor` or if there are not unfilled slots at the back of the `Cursor`"
@@ -304,9 +304,9 @@ impl<'a, T, S: ?Sized + Storage<T>> Cursor<'a, T, S> {
     ///
     /// Panics if there are less than `slice.len()` unfilled slots
     /// at the front of the `Cursor`
-    pub fn write_slice_front(&mut self, slice: &[T])
+    pub fn write_slice_front(&mut self, slice: &[S::Item])
     where
-        T: Copy,
+        S::Item: Copy,
     {
         let write_front_len = self.write_front_len();
         assert!(
@@ -329,9 +329,9 @@ impl<'a, T, S: ?Sized + Storage<T>> Cursor<'a, T, S> {
     ///
     /// Panics if there are less than `slice.len()` unfilled slots
     /// at the back of the `Cursor`
-    pub fn write_slice_back(&mut self, slice: &[T])
+    pub fn write_slice_back(&mut self, slice: &[S::Item])
     where
-        T: Copy,
+        S::Item: Copy,
     {
         let write_back_len = self.write_back_len();
         assert!(

@@ -2,6 +2,7 @@
 
 #[cfg(feature = "alloc")]
 use std::boxed::Box;
+use std::mem::MaybeUninit;
 
 mod array;
 #[cfg(any(doc, feature = "alloc"))]
@@ -13,6 +14,11 @@ mod capacity;
 #[cfg(any(doc, feature = "alloc"))]
 pub use heap::Heap;
 
+/// Error on failure to allocate
+pub struct AllocError;
+/// Result of an allocation
+pub type AllocResult = Result<(), AllocError>;
+
 /// A type that can hold `T`s, and potentially
 /// reserve space for more `Self::Items`s
 ///
@@ -20,28 +26,12 @@ pub use heap::Heap;
 ///
 /// Other safe types rely on this trait being implemented correctly.
 /// See the safety requirements on each function
-pub unsafe trait Storage<T> {
+pub unsafe trait Storage: AsRef<[MaybeUninit<Self::Item>]> + AsMut<[MaybeUninit<Self::Item>]> {
+    /// The type of item that this storage can contain
+    type Item;
+
     #[doc(hidden)]
     const CONST_CAPACITY: Option<usize> = None;
-
-    /// Is the pointer from `as_ptr` guaranteed to be aligned to `T`
-    ///
-    /// Ideally this would be a `where` clause to prevent alignment issues
-    /// at compile time, but that can't happen until const-generics allows
-    /// predicates in where bounds (like `where align_of::<T>() >= align_of::<U>()`)
-    const IS_ALIGNED: bool;
-
-    /// The number of elements that it is valid to write to this `Storage`
-    ///
-    /// i.e. `as_mut_ptr()..as_mut_ptr() + capacity()` should be valid to write
-    /// `T`s
-    fn capacity(&self) -> usize;
-
-    /// Returns a pointer to the first element
-    fn as_ptr(&self) -> *const T;
-
-    /// Returns a mutable pointer to the first element
-    fn as_mut_ptr(&mut self) -> *mut T;
 
     /// Reserves space for at least `new_capacity` elements
     ///
@@ -64,7 +54,7 @@ pub unsafe trait Storage<T> {
     /// # Safety
     ///
     /// If `Ok(())` is returned, the `capacity` must be at least `new_capacity`
-    fn try_reserve(&mut self, new_capacity: usize) -> bool;
+    fn try_reserve(&mut self, new_capacity: usize) -> AllocResult;
 }
 
 /// A storage that can be initially created with a given capacity
@@ -73,7 +63,7 @@ pub unsafe trait Storage<T> {
 ///
 /// The storage must have a capacity of at least `capacity` after
 /// `StorageWithCapacity::with_capacity` is called.
-pub unsafe trait StorageWithCapacity<T>: Storage<T> + Sized {
+pub unsafe trait StorageWithCapacity: Storage + Sized {
     /// Creates a new storage with at least the given storage capacity
     fn with_capacity(capacity: usize) -> Self;
 
@@ -84,69 +74,53 @@ pub unsafe trait StorageWithCapacity<T>: Storage<T> + Sized {
     }
 }
 
-unsafe impl<T, S: ?Sized + Storage<T>> Storage<T> for &mut S {
+unsafe impl<S: ?Sized + Storage> Storage for &mut S {
+    type Item = S::Item;
+
     #[doc(hidden)]
     const CONST_CAPACITY: Option<usize> = S::CONST_CAPACITY;
-    const IS_ALIGNED: bool = S::IS_ALIGNED;
+
     #[inline]
-    fn capacity(&self) -> usize {
-        S::capacity(self)
+    fn reserve(&mut self, new_capacity: usize) { S::reserve(self, new_capacity); }
+    #[inline]
+    fn try_reserve(&mut self, new_capacity: usize) -> AllocResult { S::try_reserve(self, new_capacity) }
+}
+
+/// Wrapper for a Box<S>. Needed to implement some traits that could not be implemented on Box directly
+pub struct BoxStorage<S: ?Sized + Storage>(pub Box<S>);
+
+impl<S: ?Sized + Storage> AsRef<[MaybeUninit<S::Item>]> for BoxStorage<S> {
+    fn as_ref(&self) -> &[MaybeUninit<S::Item>] {
+        self.0.as_ref().as_ref()
     }
-    #[inline]
-    fn as_ptr(&self) -> *const T {
-        S::as_ptr(self)
-    }
-    #[inline]
-    fn as_mut_ptr(&mut self) -> *mut T {
-        S::as_mut_ptr(self)
-    }
-    #[inline]
-    fn reserve(&mut self, new_capacity: usize) {
-        S::reserve(self, new_capacity);
-    }
-    #[inline]
-    fn try_reserve(&mut self, new_capacity: usize) -> bool {
-        S::try_reserve(self, new_capacity)
+}
+
+impl<S: ?Sized + Storage> AsMut<[MaybeUninit<S::Item>]> for BoxStorage<S> {
+    fn as_mut(&mut self) -> &mut [MaybeUninit<S::Item>] {
+        self.0.as_mut().as_mut()
     }
 }
 
 #[cfg(any(doc, feature = "alloc"))]
-unsafe impl<T, S: ?Sized + Storage<T>> Storage<T> for Box<S> {
+unsafe impl<S: ?Sized + Storage> Storage for BoxStorage<S> {
+    type Item = S::Item;
+
     #[doc(hidden)]
     const CONST_CAPACITY: Option<usize> = S::CONST_CAPACITY;
-    const IS_ALIGNED: bool = S::IS_ALIGNED;
 
     #[inline]
-    fn capacity(&self) -> usize {
-        S::capacity(self)
-    }
+    fn reserve(&mut self, new_capacity: usize) { S::reserve(&mut self.0, new_capacity); }
     #[inline]
-    fn as_ptr(&self) -> *const T {
-        S::as_ptr(self)
-    }
-    #[inline]
-    fn as_mut_ptr(&mut self) -> *mut T {
-        S::as_mut_ptr(self)
-    }
-    #[inline]
-    fn reserve(&mut self, new_capacity: usize) {
-        S::reserve(self, new_capacity);
-    }
-    #[inline]
-    fn try_reserve(&mut self, new_capacity: usize) -> bool {
-        S::try_reserve(self, new_capacity)
-    }
+    fn try_reserve(&mut self, new_capacity: usize) -> AllocResult { S::try_reserve(&mut self.0, new_capacity) }
 }
 
 #[cfg(any(doc, feature = "alloc"))]
-unsafe impl<T, S: ?Sized + StorageWithCapacity<T>> StorageWithCapacity<T> for Box<S> {
-    fn with_capacity(capacity: usize) -> Self {
-        Box::new(S::with_capacity(capacity))
-    }
+unsafe impl<S: ?Sized + StorageWithCapacity> StorageWithCapacity for BoxStorage<S> {
+    fn with_capacity(capacity: usize) -> Self { Self(Box::new(S::with_capacity(capacity))) }
 
     #[doc(hidden)]
     #[allow(non_snake_case)]
     fn __with_capacity__const_capacity_checked(capacity: usize, old_capacity: Option<usize>) -> Self {
-        Box::new(S::__with_capacity__const_capacity_checked(capacity, old_capacity))
+        Self(Box::new(S::__with_capacity__const_capacity_checked(capacity, old_capacity)))
     }
 }

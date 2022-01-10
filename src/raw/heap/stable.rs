@@ -1,12 +1,9 @@
 use crate::raw::{
     capacity::{capacity, Round},
-    Storage, StorageWithCapacity,
+    AllocError, AllocResult, Storage, StorageWithCapacity,
 };
 
-use core::{
-    alloc::Layout,
-    mem::{align_of, size_of},
-};
+use core::{alloc::Layout, mem::size_of};
 use std::{
     alloc::{alloc, handle_alloc_error, realloc},
     mem::MaybeUninit,
@@ -64,28 +61,34 @@ impl<T> Default for Heap<T> {
     fn default() -> Self { Self::new() }
 }
 
-unsafe impl<T, U> Storage<U> for Heap<T> {
-    const IS_ALIGNED: bool = align_of::<T>() >= align_of::<U>();
+impl<T> AsRef<[MaybeUninit<T>]> for Heap<T> {
+    fn as_ref(&self) -> &[MaybeUninit<T>] {
+        self.0.as_ref()
+    }
+}
 
-    fn capacity(&self) -> usize { capacity(self.0.len(), size_of::<T>(), size_of::<U>(), Round::Down) }
+impl<T> AsMut<[MaybeUninit<T>]> for Heap<T> {
+    fn as_mut(&mut self) -> &mut [MaybeUninit<T>] {
+        self.0.as_mut()
+    }
+}
 
-    fn as_ptr(&self) -> *const U { self.0.as_ptr() as *const U }
-
-    fn as_mut_ptr(&mut self) -> *mut U { self.0.as_mut_ptr() as *mut U }
+unsafe impl<T> Storage for Heap<T> {
+    type Item = T;
 
     fn reserve(&mut self, new_capacity: usize) {
-        let new_capacity = capacity(new_capacity, size_of::<U>(), size_of::<T>(), Round::Up);
+        let new_capacity = capacity(new_capacity, size_of::<T>(), size_of::<T>(), Round::Up);
         if self.0.len() < new_capacity {
             let _ = self.reserve_slow(new_capacity, OnFailure::Abort);
         }
     }
 
-    fn try_reserve(&mut self, new_capacity: usize) -> bool {
-        let new_capacity = capacity(new_capacity, size_of::<U>(), size_of::<T>(), Round::Up);
+    fn try_reserve(&mut self, new_capacity: usize) -> AllocResult {
+        let new_capacity = capacity(new_capacity, size_of::<T>(), size_of::<T>(), Round::Up);
         if self.0.len() < new_capacity {
             self.reserve_slow(new_capacity, OnFailure::Error)
         } else {
-            true
+            Ok(())
         }
     }
 }
@@ -150,16 +153,16 @@ impl<T> Heap<T> {
     }
 }
 
-unsafe impl<T, U> StorageWithCapacity<U> for Heap<T> {
+unsafe impl<T> StorageWithCapacity for Heap<T> {
     fn with_capacity(cap: usize) -> Self {
-        Self::with_capacity(capacity(cap, size_of::<U>(), size_of::<T>(), Round::Up))
+        Self::with_capacity(capacity(cap, size_of::<T>(), size_of::<T>(), Round::Up))
     }
 }
 
 impl<T> Heap<T> {
     #[cold]
     #[inline(never)]
-    fn reserve_slow(&mut self, new_capacity: usize, on_failure: OnFailure) -> bool {
+    fn reserve_slow(&mut self, new_capacity: usize, on_failure: OnFailure) -> AllocResult {
         assert!(new_capacity > self.0.len());
 
         // taking a copy of the box so we can get it's contents and then update it later
@@ -185,7 +188,7 @@ impl<T> Heap<T> {
         let ptr = match (core::ptr::NonNull::new(ptr), on_failure) {
             (Some(ptr), _) => ptr,
             (None, OnFailure::Abort) => handle_alloc_error(layout),
-            (None, OnFailure::Error) => return false,
+            (None, OnFailure::Error) => return Err(AllocError),
         };
 
         // Creating a new Heap using the re-alloced pointer.
@@ -197,6 +200,6 @@ impl<T> Heap<T> {
             std::mem::forget(old);
         }
 
-        true
+        Ok(())
     }
 }

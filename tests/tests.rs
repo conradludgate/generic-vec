@@ -37,9 +37,7 @@ macro_rules! S {
 #[cfg(feature = "alloc")]
 mod to_string {
     pub trait TestToString: std::string::ToString {}
-    pub fn to_string<T: TestToString>(t: &T) -> std::string::String {
-        t.to_string()
-    }
+    pub fn to_string<T: TestToString>(t: &T) -> std::string::String { t.to_string() }
 
     impl TestToString for i32 {}
     impl TestToString for &i32 {}

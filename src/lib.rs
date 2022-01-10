@@ -301,7 +301,7 @@ impl<S: Storage> GenericVec<S> {
     /// ```
     pub fn with_storage(storage: S) -> Self { Self::with_storage_len(storage, 0) }
 
-    fn with_storage_len(storage: S, len: usize) -> Self { Self { storage, len } }
+    fn with_storage_len(storage: S, len: usize) -> Self { Self { len, storage } }
 }
 
 impl<S: raw::StorageWithCapacity> GenericVec<S> {
@@ -418,7 +418,7 @@ impl<S: Storage> GenericVec<S> {
     ///
     /// If the given storage cannot hold type `T`, then this method will panic
     #[cfg(not(feature = "nightly"))]
-    pub unsafe fn from_raw_parts(len: usize, storage: S) -> Self { Self { storage, len } }
+    pub unsafe fn from_raw_parts(len: usize, storage: S) -> Self { Self { len, storage } }
 }
 
 #[cfg(feature = "nightly")]

@@ -87,15 +87,11 @@ unsafe impl<S: ?Sized + Storage> Storage for &mut S {
 pub struct BoxStorage<S: ?Sized + Storage>(pub Box<S>);
 
 impl<S: ?Sized + Storage> AsRef<[MaybeUninit<S::Item>]> for BoxStorage<S> {
-    fn as_ref(&self) -> &[MaybeUninit<S::Item>] {
-        self.0.as_ref().as_ref()
-    }
+    fn as_ref(&self) -> &[MaybeUninit<S::Item>] { self.0.as_ref().as_ref() }
 }
 
 impl<S: ?Sized + Storage> AsMut<[MaybeUninit<S::Item>]> for BoxStorage<S> {
-    fn as_mut(&mut self) -> &mut [MaybeUninit<S::Item>] {
-        self.0.as_mut().as_mut()
-    }
+    fn as_mut(&mut self) -> &mut [MaybeUninit<S::Item>] { self.0.as_mut().as_mut() }
 }
 
 #[cfg(any(doc, feature = "alloc"))]
@@ -118,6 +114,9 @@ unsafe impl<S: ?Sized + StorageWithCapacity> StorageWithCapacity for BoxStorage<
     #[doc(hidden)]
     #[allow(non_snake_case)]
     fn __with_capacity__const_capacity_checked(capacity: usize, old_capacity: Option<usize>) -> Self {
-        Self(Box::new(S::__with_capacity__const_capacity_checked(capacity, old_capacity)))
+        Self(Box::new(S::__with_capacity__const_capacity_checked(
+            capacity,
+            old_capacity,
+        )))
     }
 }

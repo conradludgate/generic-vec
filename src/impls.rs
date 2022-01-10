@@ -1,4 +1,4 @@
-use crate::{raw::StorageWithCapacity, GenericVec, Storage};
+use crate::{raw::StorageWithCapacity, SimpleVec, Storage};
 
 #[allow(unused_imports)]
 use core::{
@@ -12,7 +12,7 @@ use core::{
 #[cfg(feature = "alloc")]
 use std::vec::Vec;
 
-impl<S: StorageWithCapacity> Clone for GenericVec<S>
+impl<S: StorageWithCapacity> Clone for SimpleVec<S>
 where
     S::Item: Clone,
 {
@@ -25,34 +25,34 @@ where
     fn clone_from(&mut self, source: &Self) { self.clone_from(source); }
 }
 
-impl<S: StorageWithCapacity + Default> Default for GenericVec<S> {
+impl<S: StorageWithCapacity + Default> Default for SimpleVec<S> {
     fn default() -> Self { Self::with_storage(Default::default()) }
 }
 
-impl<O: ?Sized + AsRef<[S::Item]>, S: ?Sized + Storage> PartialEq<O> for GenericVec<S>
+impl<O: ?Sized + AsRef<[S::Item]>, S: ?Sized + Storage> PartialEq<O> for SimpleVec<S>
 where
     S::Item: PartialEq,
 {
     fn eq(&self, other: &O) -> bool { self.as_slice() == other.as_ref() }
 }
 
-impl<S: ?Sized + Storage> Eq for GenericVec<S> where S::Item: Eq {}
+impl<S: ?Sized + Storage> Eq for SimpleVec<S> where S::Item: Eq {}
 
-impl<O: ?Sized + AsRef<[S::Item]>, S: ?Sized + Storage> PartialOrd<O> for GenericVec<S>
+impl<O: ?Sized + AsRef<[S::Item]>, S: ?Sized + Storage> PartialOrd<O> for SimpleVec<S>
 where
     S::Item: PartialOrd,
 {
     fn partial_cmp(&self, other: &O) -> Option<core::cmp::Ordering> { self.as_slice().partial_cmp(other.as_ref()) }
 }
 
-impl<S: ?Sized + Storage> Ord for GenericVec<S>
+impl<S: ?Sized + Storage> Ord for SimpleVec<S>
 where
     S::Item: Ord,
 {
     fn cmp(&self, other: &Self) -> core::cmp::Ordering { self.as_slice().cmp(other.as_ref()) }
 }
 
-impl<S: ?Sized + Storage> Hash for GenericVec<S>
+impl<S: ?Sized + Storage> Hash for SimpleVec<S>
 where
     S::Item: Hash,
 {
@@ -60,26 +60,26 @@ where
 }
 
 use core::fmt;
-impl<S: ?Sized + Storage> fmt::Debug for GenericVec<S>
+impl<S: ?Sized + Storage> fmt::Debug for SimpleVec<S>
 where
     S::Item: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { self.as_slice().fmt(f) }
 }
 
-impl<S: ?Sized + Storage> AsRef<[S::Item]> for GenericVec<S> {
+impl<S: ?Sized + Storage> AsRef<[S::Item]> for SimpleVec<S> {
     fn as_ref(&self) -> &[S::Item] { self }
 }
 
-impl<S: ?Sized + Storage> AsMut<[S::Item]> for GenericVec<S> {
+impl<S: ?Sized + Storage> AsMut<[S::Item]> for SimpleVec<S> {
     fn as_mut(&mut self) -> &mut [S::Item] { self }
 }
 
-impl<S: ?Sized + Storage> Borrow<[S::Item]> for GenericVec<S> {
+impl<S: ?Sized + Storage> Borrow<[S::Item]> for SimpleVec<S> {
     fn borrow(&self) -> &[S::Item] { self }
 }
 
-impl<S: ?Sized + Storage> BorrowMut<[S::Item]> for GenericVec<S> {
+impl<S: ?Sized + Storage> BorrowMut<[S::Item]> for SimpleVec<S> {
     fn borrow_mut(&mut self) -> &mut [S::Item] { self }
 }
 
@@ -148,7 +148,7 @@ impl<T, A: std::alloc::Allocator> From<crate::HeapVec<T, A>> for Vec<T, A> {
     }
 }
 
-impl<S: Storage + ?Sized, I> Index<I> for GenericVec<S>
+impl<S: Storage + ?Sized, I> Index<I> for SimpleVec<S>
 where
     I: SliceIndex<[S::Item]>,
 {
@@ -157,7 +157,7 @@ where
     fn index(&self, index: I) -> &Self::Output { self.as_slice().index(index) }
 }
 
-impl<S: Storage + ?Sized, I> IndexMut<I> for GenericVec<S>
+impl<S: Storage + ?Sized, I> IndexMut<I> for SimpleVec<S>
 where
     I: SliceIndex<[S::Item]>,
 {

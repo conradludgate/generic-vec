@@ -2,7 +2,7 @@ use crate::{
     raw::{Storage, StorageWithCapacity},
     uninit_array,
 };
-use std::mem::MaybeUninit;
+use core::mem::MaybeUninit;
 
 use super::{AllocError, AllocResult};
 

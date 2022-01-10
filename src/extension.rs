@@ -1,4 +1,4 @@
-use crate::{GenericVec, Storage};
+use crate::{SimpleVec, Storage};
 
 pub trait Extension<T> {
     unsafe fn extend_from_slice(&mut self, slice: &[T]);
@@ -6,7 +6,7 @@ pub trait Extension<T> {
     unsafe fn grow(&mut self, additional: usize, value: T);
 }
 
-fn clone_extend_from_slice<S: ?Sized + Storage>(vec: &mut GenericVec<S>, slice: &[S::Item])
+fn clone_extend_from_slice<S: ?Sized + Storage>(vec: &mut SimpleVec<S>, slice: &[S::Item])
 where
     S::Item: Clone,
 {
@@ -30,7 +30,7 @@ where
     }
 }
 
-fn clone_grow<S: ?Sized + Storage>(vec: &mut GenericVec<S>, additional: usize, value: S::Item)
+fn clone_grow<S: ?Sized + Storage>(vec: &mut SimpleVec<S>, additional: usize, value: S::Item)
 where
     S::Item: Clone,
 {
@@ -58,7 +58,7 @@ where
     }
 }
 
-impl<S: ?Sized + Storage> Extension<S::Item> for GenericVec<S>
+impl<S: ?Sized + Storage> Extension<S::Item> for SimpleVec<S>
 where
     S::Item: Clone,
 {
@@ -76,7 +76,7 @@ where
 }
 
 #[cfg(feature = "nightly")]
-impl<S: ?Sized + Storage> Extension<S::Item> for GenericVec<S>
+impl<S: ?Sized + Storage> Extension<S::Item> for SimpleVec<S>
 where
     S::Item: Copy,
 {

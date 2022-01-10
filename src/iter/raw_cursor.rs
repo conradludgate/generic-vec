@@ -1,17 +1,17 @@
 #![allow(clippy::cast_sign_loss)]
 
-use crate::{GenericVec, Storage};
+use crate::{SimpleVec, Storage};
 use core::{marker::PhantomData, ops::Range, ptr::NonNull};
 
 /// This struct is created by [`GenericVec::raw_cursor`]. See its documentation for more.
 pub struct RawCursor<'a, S: ?Sized + Storage> {
-    vec: NonNull<GenericVec<S>>,
+    vec: NonNull<SimpleVec<S>>,
     old_vec_len: usize,
     write_front: *mut S::Item,
     read_front: *mut S::Item,
     read_back: *mut S::Item,
     write_back: *mut S::Item,
-    mark: PhantomData<&'a mut GenericVec<S>>,
+    mark: PhantomData<&'a mut SimpleVec<S>>,
 }
 
 unsafe impl<S: ?Sized + Storage + Send> Send for RawCursor<'_, S> where S::Item: Send {}
@@ -26,7 +26,7 @@ impl<'a, S: ?Sized + Storage> RawCursor<'a, S> {
     const ZS_PTR: *mut S::Item = NonNull::<S::Item>::dangling().as_ptr();
 
     #[inline]
-    pub(crate) fn new(vec: &'a mut GenericVec<S>, Range { start, end }: Range<usize>) -> Self {
+    pub(crate) fn new(vec: &'a mut SimpleVec<S>, Range { start, end }: Range<usize>) -> Self {
         unsafe {
             let mut raw_vec = NonNull::from(vec);
             let vec = raw_vec.as_mut();
@@ -104,7 +104,7 @@ impl<'a, S: ?Sized + Storage> RawCursor<'a, S> {
     }
 
     /// Get a mutable reference to the underlying vector
-    pub(crate) unsafe fn vec_mut(&mut self) -> &mut GenericVec<S> { unsafe { self.vec.as_mut() } }
+    pub(crate) unsafe fn vec_mut(&mut self) -> &mut SimpleVec<S> { unsafe { self.vec.as_mut() } }
 
     /// The number of remaining elements in range of this `RawCursor`
     ///

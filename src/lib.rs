@@ -10,10 +10,10 @@
         const_fn_trait_bound,
         const_mut_refs,
         doc_cfg,
-        new_uninit,
         ptr_metadata,
     )
 )]
+#![cfg_attr(all(feature = "nightly", feature = "alloc"), feature(new_uninit))]
 #![cfg_attr(feature = "nightly", forbid(unsafe_op_in_unsafe_fn))]
 #![allow(unused_unsafe)]
 #![forbid(missing_docs, clippy::missing_safety_doc)]
@@ -108,11 +108,10 @@
 extern crate alloc as std;
 
 use core::{
-    mem::MaybeUninit,
+    mem::{ManuallyDrop, MaybeUninit},
     ops::{Deref, DerefMut, RangeBounds},
     ptr,
 };
-use std::mem::ManuallyDrop;
 
 mod extension;
 mod impls;
@@ -126,20 +125,28 @@ use raw::{AllocError, AllocResult, Storage};
 #[doc(hidden)]
 pub use core;
 
+/// A type provided purely for simplicity.
+///
+/// [`GenericVec`] includes it's `T` type as a type parameter,
+/// even though it can be trivially inferred from the [`Storage::Item`] field.
+/// This is because it helps in generic contexts, the T type just gives the compiler
+/// a little nudge to be able to tell apart a `GenericVec<Item = u8>` from `GenericVec<Item = u16>`.
+pub type SimpleVec<S> = GenericVec<<S as Storage>::Item, S>;
+
 /// A heap backed vector with a growable capacity
 #[cfg(any(doc, all(feature = "alloc", feature = "nightly")))]
 #[cfg_attr(doc, doc(cfg(all(feature = "alloc", feature = "nightly"))))]
-pub type HeapVec<T, A = std::alloc::Global> = GenericVec<Box<[MaybeUninit<T>], A>>;
+pub type HeapVec<T, A = std::alloc::Global> = SimpleVec<Box<[MaybeUninit<T>], A>>;
 
 /// A heap backed vector with a growable capacity
 #[cfg(all(not(doc), feature = "alloc", not(feature = "nightly")))]
 #[cfg_attr(doc, doc(cfg(feature = "alloc")))]
-pub type HeapVec<T> = GenericVec<Box<[MaybeUninit<T>]>>;
+pub type HeapVec<T> = SimpleVec<Box<[MaybeUninit<T>]>>;
 
 /// An array backed vector backed by potentially uninitialized memory
-pub type ArrayVec<T, const N: usize> = GenericVec<[MaybeUninit<T>; N]>;
+pub type ArrayVec<T, const N: usize> = SimpleVec<[MaybeUninit<T>; N]>;
 /// An slice backed vector backed by potentially uninitialized memory
-pub type SliceVec<'a, T> = GenericVec<&'a mut [MaybeUninit<T>]>;
+pub type SliceVec<'a, T> = SimpleVec<&'a mut [MaybeUninit<T>]>;
 
 /// Creates a new uninit array, See [`MaybeUninit::uninit_array`]
 pub fn uninit_array<T, const N: usize>() -> [MaybeUninit<T>; N] {
@@ -224,7 +231,7 @@ macro_rules! save_spare {
         let spare = $crate::core::mem::ManuallyDrop::new(spare);
         let len = spare.len();
         let ptr = spare.as_ptr();
-        let orig: &mut $crate::GenericVec<_> = $orig;
+        let orig: &mut $crate::GenericVec<_, _> = $orig;
         $crate::validate_spare(ptr, orig);
         let len = len + orig.len();
         $orig.set_len_unchecked(len);
@@ -243,7 +250,7 @@ pub fn validate_spare<T>(spare_ptr: *const T, orig: &[T]) {
 /// A vector type that can be backed up by a variety of different backends
 /// including slices, arrays, and the heap.
 #[repr(C)]
-pub struct GenericVec<S: ?Sized + Storage> {
+pub struct GenericVec<T, S: ?Sized + Storage<Item = T>> {
     len: usize,
     storage: S,
 }
@@ -262,7 +269,7 @@ unsafe fn slice_assume_init_mut<T>(slice: &mut [MaybeUninit<T>]) -> &mut [T] {
     unsafe { &mut *(slice as *mut [MaybeUninit<T>] as *mut [T]) }
 }
 
-impl<S: ?Sized + Storage> Deref for GenericVec<S> {
+impl<S: ?Sized + Storage> Deref for SimpleVec<S> {
     type Target = [S::Item];
 
     fn deref(&self) -> &Self::Target {
@@ -273,7 +280,7 @@ impl<S: ?Sized + Storage> Deref for GenericVec<S> {
     }
 }
 
-impl<S: ?Sized + Storage> DerefMut for GenericVec<S> {
+impl<S: ?Sized + Storage> DerefMut for SimpleVec<S> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         let len = self.len;
         // The first `len` elements are guaranteed to be initialized
@@ -282,7 +289,7 @@ impl<S: ?Sized + Storage> DerefMut for GenericVec<S> {
     }
 }
 
-impl<S: ?Sized + Storage> Drop for GenericVec<S> {
+impl<T, S: ?Sized + Storage<Item = T>> Drop for GenericVec<T, S> {
     fn drop(&mut self) {
         // The first `len` elements are guaranteed to be initialized
         // as part of the guarantee on `self.set_len_unchecked`
@@ -292,7 +299,7 @@ impl<S: ?Sized + Storage> Drop for GenericVec<S> {
     }
 }
 
-impl<S: Storage> GenericVec<S> {
+impl<S: Storage> SimpleVec<S> {
     /// Create a new empty `GenericVec` with the given backend
     ///
     /// ```rust
@@ -304,7 +311,7 @@ impl<S: Storage> GenericVec<S> {
     fn with_storage_len(storage: S, len: usize) -> Self { Self { len, storage } }
 }
 
-impl<S: raw::StorageWithCapacity> GenericVec<S> {
+impl<S: raw::StorageWithCapacity> SimpleVec<S> {
     /// Create a new empty `GenericVec` with the backend with at least the given capacity
     pub fn with_capacity(capacity: usize) -> Self { Self::with_storage(S::with_capacity(capacity)) }
 
@@ -400,7 +407,7 @@ impl<'a, T> SliceVec<'a, T> {
     }
 }
 
-impl<S: Storage> GenericVec<S> {
+impl<S: Storage> SimpleVec<S> {
     /// Convert a `GenericVec` into a length-storage pair
     pub fn into_raw_parts(self) -> (usize, S) {
         let this = core::mem::ManuallyDrop::new(self);
@@ -422,7 +429,7 @@ impl<S: Storage> GenericVec<S> {
 }
 
 #[cfg(feature = "nightly")]
-impl<S: Storage> GenericVec<S> {
+impl<S: Storage> SimpleVec<S> {
     /// Create a `GenericVec` from a length-storage pair
     ///
     /// Note: this is only const with the `nightly` feature enabled
@@ -438,7 +445,7 @@ impl<S: Storage> GenericVec<S> {
     pub const unsafe fn from_raw_parts(len: usize, storage: S) -> Self { Self { len, storage } }
 }
 
-impl<S: ?Sized + Storage> GenericVec<S> {
+impl<S: ?Sized + Storage> SimpleVec<S> {
     /// Returns the number of elements the vector can hold without reallocating or panicing.
     pub fn capacity(&self) -> usize {
         if core::mem::size_of::<S::Item>() == 0 {
@@ -1402,7 +1409,7 @@ impl<S: ?Sized + Storage> GenericVec<S> {
     ///
     /// # Panics
     /// If the index is out of bounds
-    pub fn split_off<B>(&mut self, index: usize) -> GenericVec<B>
+    pub fn split_off<B>(&mut self, index: usize) -> GenericVec<S::Item, B>
     where
         B: raw::StorageWithCapacity<Item = S::Item>,
     {
@@ -1413,8 +1420,10 @@ impl<S: ?Sized + Storage> GenericVec<S> {
             self.len()
         );
 
-        let mut vec =
-            GenericVec::<B>::__with_capacity__const_capacity_checked(self.len().wrapping_sub(index), S::CONST_CAPACITY);
+        let mut vec = GenericVec::<S::Item, B>::__with_capacity__const_capacity_checked(
+            self.len().wrapping_sub(index),
+            S::CONST_CAPACITY,
+        );
 
         self.split_off_into(index, &mut vec);
 
@@ -1442,7 +1451,7 @@ impl<S: ?Sized + Storage> GenericVec<S> {
     ///
     /// # Panics
     /// If the index is out of bounds
-    pub fn split_off_into<B>(&mut self, index: usize, other: &mut GenericVec<B>)
+    pub fn split_off_into<B>(&mut self, index: usize, other: &mut GenericVec<S::Item, B>)
     where
         B: raw::Storage<Item = S::Item> + ?Sized,
     {
@@ -1486,12 +1495,12 @@ impl<S: ?Sized + Storage> GenericVec<S> {
     /// # Panic
     ///
     /// May panic or reallocate if the collection is full
-    pub fn append<B: Storage<Item = S::Item> + ?Sized>(&mut self, other: &mut GenericVec<B>) {
+    pub fn append<B: Storage<Item = S::Item> + ?Sized>(&mut self, other: &mut GenericVec<S::Item, B>) {
         other.split_off_into(0, self);
     }
 
     /// Convert the backing storage type, and moves all the elements in `self` to the new vector
-    pub fn convert<B: raw::StorageWithCapacity<Item = S::Item>>(mut self) -> GenericVec<B>
+    pub fn convert<B: raw::StorageWithCapacity<Item = S::Item>>(mut self) -> GenericVec<S::Item, B>
     where
         S: Sized,
     {

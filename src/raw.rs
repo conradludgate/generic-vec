@@ -1,8 +1,8 @@
 //! The raw vector type that back-up the [`GenericVec`](crate::GenericVec)
 
+use core::mem::MaybeUninit;
 #[cfg(feature = "alloc")]
 use std::boxed::Box;
-use std::mem::MaybeUninit;
 
 mod array;
 #[cfg(any(doc, feature = "alloc"))]
@@ -84,12 +84,15 @@ unsafe impl<S: ?Sized + Storage> Storage for &mut S {
 }
 
 /// Wrapper for a [`Box<S>`]. Needed to implement some traits that could not be implemented on Box directly
+#[cfg(any(doc, feature = "alloc"))]
 pub struct BoxStorage<S: ?Sized + Storage>(pub Box<S>);
 
+#[cfg(any(doc, feature = "alloc"))]
 impl<S: ?Sized + Storage> AsRef<[MaybeUninit<S::Item>]> for BoxStorage<S> {
     fn as_ref(&self) -> &[MaybeUninit<S::Item>] { self.0.as_ref().as_ref() }
 }
 
+#[cfg(any(doc, feature = "alloc"))]
 impl<S: ?Sized + Storage> AsMut<[MaybeUninit<S::Item>]> for BoxStorage<S> {
     fn as_mut(&mut self) -> &mut [MaybeUninit<S::Item>] { self.0.as_mut().as_mut() }
 }

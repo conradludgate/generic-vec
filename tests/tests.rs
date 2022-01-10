@@ -4,11 +4,11 @@
 extern crate alloc as std;
 
 use cl_generic_vec::{ArrayVec, GenericVec};
+use core::mem::MaybeUninit;
 #[cfg(feature = "alloc")]
 use mockalloc::Mockalloc;
 #[cfg(feature = "std")]
 use std::alloc::System;
-use std::mem::MaybeUninit;
 
 #[global_allocator]
 #[cfg(feature = "std")]
@@ -123,7 +123,7 @@ fn unsized_slice_vec() {
     assert_eq!(array_vec.capacity(), 16);
     assert_eq!(array_vec, [1]);
 
-    let slice_vec: &mut GenericVec<[MaybeUninit<i32>]> = &mut array_vec;
+    let slice_vec: &mut GenericVec<i32, [MaybeUninit<_>]> = &mut array_vec;
 
     slice_vec.push(2);
     assert_eq!(slice_vec.len(), 2);

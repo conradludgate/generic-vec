@@ -18,10 +18,10 @@ use core::iter::FromIterator;
 
 use crate::{
     raw::{Storage, StorageWithCapacity},
-    GenericVec,
+    SimpleVec,
 };
 
-impl<V, S: StorageWithCapacity + Default> FromIterator<V> for GenericVec<S>
+impl<V, S: StorageWithCapacity + Default> FromIterator<V> for SimpleVec<S>
 where
     Self: Extend<V>,
 {
@@ -33,7 +33,7 @@ where
     }
 }
 
-impl<S: ?Sized + Storage> Extend<S::Item> for GenericVec<S> {
+impl<S: ?Sized + Storage> Extend<S::Item> for SimpleVec<S> {
     fn extend<I: IntoIterator<Item = S::Item>>(&mut self, iter: I) {
         let iter = iter.into_iter();
         let _ = self.try_reserve(iter.size_hint().0);

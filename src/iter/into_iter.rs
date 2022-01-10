@@ -1,4 +1,4 @@
-use crate::{GenericVec, Storage};
+use crate::{SimpleVec, Storage};
 #[cfg(feature = "nightly")]
 use core::iter::TrustedLen;
 use core::{
@@ -11,7 +11,7 @@ use core::{
 /// See its documentation for more.
 pub struct IntoIter<S: ?Sized + Storage> {
     index: usize,
-    vec: ManuallyDrop<GenericVec<S>>,
+    vec: ManuallyDrop<SimpleVec<S>>,
 }
 
 impl<S: ?Sized + Storage> Drop for IntoIter<S> {
@@ -37,7 +37,7 @@ impl<S: ?Sized + Storage> Drop for IntoIter<S> {
     }
 }
 
-impl<S: Storage> IntoIterator for GenericVec<S> {
+impl<S: Storage> IntoIterator for SimpleVec<S> {
     type IntoIter = IntoIter<S>;
     type Item = S::Item;
 
@@ -49,14 +49,14 @@ impl<S: Storage> IntoIterator for GenericVec<S> {
     }
 }
 
-impl<'a, S: ?Sized + Storage> IntoIterator for &'a mut GenericVec<S> {
+impl<'a, S: ?Sized + Storage> IntoIterator for &'a mut SimpleVec<S> {
     type IntoIter = core::slice::IterMut<'a, S::Item>;
     type Item = &'a mut S::Item;
 
     fn into_iter(self) -> Self::IntoIter { self.iter_mut() }
 }
 
-impl<'a, S: ?Sized + Storage> IntoIterator for &'a GenericVec<S> {
+impl<'a, S: ?Sized + Storage> IntoIterator for &'a SimpleVec<S> {
     type IntoIter = core::slice::Iter<'a, S::Item>;
     type Item = &'a S::Item;
 

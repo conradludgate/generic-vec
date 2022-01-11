@@ -12,11 +12,11 @@ use std::alloc::System;
 
 #[global_allocator]
 #[cfg(feature = "std")]
-static ALLOC: Mockalloc<System> = Mockalloc(System);
+static ALLOCATOR: Mockalloc<System> = Mockalloc(System);
 
 #[global_allocator]
 #[cfg(all(feature = "alloc", not(feature = "std")))]
-static ALLOC: Mockalloc<static_alloc::Bump<[u8; 1 << 22]>> = Mockalloc(static_alloc::Bump::new([0; 1 << 22]));
+static ALLOCATOR: Mockalloc<static_alloc::Bump<[u8; 1 << 22]>> = Mockalloc(static_alloc::Bump::new([0; 1 << 22]));
 
 #[cfg(feature = "alloc")]
 macro_rules! S {
@@ -75,16 +75,11 @@ macro_rules! make_tests_files {
     };
 }
 
-macro_rules! leak {
-    ($ident:ident) => {
-        0
-    };
-}
-
-#[cfg(feature = "nightly")]
 mod array_vec {
     macro_rules! new_vec {
         ($vec:pat, max($len:expr)) => {
+            #[cfg(feature = "alloc")]
+            let _bump = std::boxed::Box::new(1);
             let $vec = cl_generic_vec::ArrayVec::<_, $len>::new();
         };
     }
@@ -95,8 +90,10 @@ mod array_vec {
 mod slice_vec {
     macro_rules! new_vec {
         ($vec:pat, max($len:expr)) => {
+            #[cfg(feature = "alloc")]
+            let _bump = std::boxed::Box::new(1);
             let mut buf = cl_generic_vec::uninit_array::<_, $len>();
-            let $vec = cl_generic_vec::SliceVec::new(&mut buf);
+            let $vec = unsafe { cl_generic_vec::SliceVec::new(&mut buf) };
         };
     }
 
@@ -107,6 +104,7 @@ mod slice_vec {
 mod heap_vec {
     macro_rules! new_vec {
         ($vec:pat, max($len:expr)) => {
+            let _bump = std::boxed::Box::new(1);
             let $vec = cl_generic_vec::HeapVec::new();
         };
     }

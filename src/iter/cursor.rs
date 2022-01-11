@@ -226,10 +226,9 @@ impl<'a, S: ?Sized + Storage> Cursor<'a, S> {
     /// at the front of the `Cursor` if there is an unfilled slot
     /// at the front of the `Cursor`
     ///
+    /// # Errors
     /// If there are no unfilled slots at the front of the `Cursor`
     /// then return `Err(value)`
-    ///
-    /// Fills in 1 unfilled slot at the front of the `Cursor` on success
     #[inline]
     pub fn try_write_front(&mut self, value: S::Item) -> Result<(), S::Item> {
         if self.is_write_front_empty() {
@@ -262,10 +261,9 @@ impl<'a, S: ?Sized + Storage> Cursor<'a, S> {
     /// at the back of the `Cursor` if there is an unfilled slot
     /// at the back of the `Cursor`
     ///
+    /// # Errors
     /// If there are no unfilled slots at the back of the `Cursor`
     /// then return `Err(value)`
-    ///
-    /// Fills in 1 unfilled slot at the back of the `Cursor` on success
     #[inline]
     pub fn try_write_back(&mut self, value: S::Item) -> Result<(), S::Item> {
         if self.is_write_back_empty() {

@@ -1,6 +1,6 @@
 [package]
 name = 'cl-generic-vec'
-version = '0.3.3'
+version = '0.3.4'
 authors = ['Conrad Ludgate <conradludgate@gmail.com>']
 edition = '2021'
 license = 'MIT/Apache-2.0'
@@ -19,5 +19,5 @@ nightly = []
 [dependencies]
 
 [dev-dependencies]
-mockalloc = '0.1'
+mockalloc = '0.1.2'
 static-alloc = '0.2'

@@ -46,7 +46,7 @@
 //! use cl_generic_vec::{SliceVec, uninit_array};
 //!
 //! let mut uninit_buffer = uninit_array::<_, 16>();
-//! let mut slice_vec = SliceVec::new(&mut uninit_buffer);
+//! let mut slice_vec = unsafe { SliceVec::new(&mut uninit_buffer) };
 //!
 //! assert!(slice_vec.is_empty());
 //! slice_vec.push(10);
@@ -136,17 +136,17 @@ pub type SimpleVec<S> = GenericVec<<S as Storage>::Item, S>;
 /// A heap backed vector with a growable capacity
 #[cfg(any(doc, all(feature = "alloc", feature = "nightly")))]
 #[cfg_attr(doc, doc(cfg(all(feature = "alloc", feature = "nightly"))))]
-pub type HeapVec<T, A = std::alloc::Global> = SimpleVec<Box<[MaybeUninit<T>], A>>;
+pub type HeapVec<T, A = std::alloc::Global> = GenericVec<T, Box<[MaybeUninit<T>], A>>;
 
 /// A heap backed vector with a growable capacity
 #[cfg(all(not(doc), feature = "alloc", not(feature = "nightly")))]
 #[cfg_attr(doc, doc(cfg(feature = "alloc")))]
-pub type HeapVec<T> = SimpleVec<Box<[MaybeUninit<T>]>>;
+pub type HeapVec<T> = GenericVec<T, Box<[MaybeUninit<T>]>>;
 
 /// An array backed vector backed by potentially uninitialized memory
-pub type ArrayVec<T, const N: usize> = SimpleVec<[MaybeUninit<T>; N]>;
+pub type ArrayVec<T, const N: usize> = GenericVec<T, [MaybeUninit<T>; N]>;
 /// An slice backed vector backed by potentially uninitialized memory
-pub type SliceVec<'a, T> = SimpleVec<&'a mut [MaybeUninit<T>]>;
+pub type SliceVec<'a, T> = GenericVec<T, &'a mut [MaybeUninit<T>]>;
 
 /// Creates a new uninit array, See [`MaybeUninit::uninit_array`]
 pub fn uninit_array<T, const N: usize>() -> [MaybeUninit<T>; N] {
@@ -396,8 +396,11 @@ impl<T, A: std::alloc::Allocator> HeapVec<T, A> {
 }
 
 impl<'a, T> SliceVec<'a, T> {
-    /// Create a new empty `SliceVec`
-    pub fn new(slice: &'a mut [MaybeUninit<T>]) -> Self { Self::with_storage(slice) }
+    /// Create a new empty `SliceVec`.
+    ///
+    /// # Safety
+    /// The contents of the slice should be completely uninitialised
+    pub unsafe fn new(slice: &'a mut [MaybeUninit<T>]) -> Self { Self::with_storage(slice) }
 
     /// Create a new full `SliceVec`
     pub fn full(slice: &'a mut [T]) -> Self {
@@ -570,8 +573,10 @@ impl<S: ?Sized + Storage> SimpleVec<S> {
         }
     }
 
-    /// Try to reserve enough space for at least `additional` elements, and returns `Err(_)`
-    /// if it's not possible to reserve enough space
+    /// Try to reserve enough space for at least `additional` elements
+    ///
+    /// # Errors
+    /// Returns `Err(_)` if it's not possible to reserve enough space
     #[inline]
     pub fn try_reserve(&mut self, additional: usize) -> AllocResult {
         if self.remaining_capacity() < additional {
@@ -962,6 +967,8 @@ impl<S: ?Sized + Storage> SimpleVec<S> {
     }
 
     /// Tries to append an element to the back of a collection.
+    ///
+    /// # Errors
     /// Returns the `Err(value)` if the collection is full
     ///
     /// Guaranteed to not panic/abort/allocate
@@ -995,6 +1002,8 @@ impl<S: ?Sized + Storage> SimpleVec<S> {
 
     /// Inserts an element at position index within the vector,
     /// shifting all elements after it to the right.
+    ///
+    /// # Errors
     /// Returns the `Err(value)` if the collection is full or index is out of bounds
     ///
     /// Guaranteed to not panic/abort/allocate
@@ -1398,8 +1407,8 @@ impl<S: ?Sized + Storage> SimpleVec<S> {
     /// # use cl_generic_vec::{gvec, SliceVec, uninit_array};
     /// # let mut vec_buf = uninit_array::<_, 3>();
     /// # let mut vec2_buf = uninit_array::<_, 5>();
-    /// # let mut vec: SliceVec<_> = SliceVec::new(&mut vec_buf); vec.extend([1, 2, 3].iter().copied());
-    /// # let mut vec2: SliceVec<_> = SliceVec::new(&mut vec2_buf); vec2.extend([4, 5, 6].iter().copied());
+    /// # let mut vec: SliceVec<_> = unsafe { SliceVec::new(&mut vec_buf) }; vec.extend([1, 2, 3].iter().copied());
+    /// # let mut vec2: SliceVec<_> = unsafe { SliceVec::new(&mut vec2_buf) }; vec2.extend([4, 5, 6].iter().copied());
     /// assert_eq!(vec, [1, 2, 3]);
     /// assert_eq!(vec2, [4, 5, 6]);
     /// vec.split_off_into(1, &mut vec2);
@@ -1440,8 +1449,8 @@ impl<S: ?Sized + Storage> SimpleVec<S> {
     /// # use cl_generic_vec::{gvec, SliceVec, uninit_array};
     /// # let mut vec_buf = uninit_array::<_, 3>();
     /// # let mut vec2_buf = uninit_array::<_, 5>();
-    /// # let mut vec: SliceVec<_> = SliceVec::new(&mut vec_buf); vec.extend([1, 2, 3].iter().copied());
-    /// # let mut vec2: SliceVec<_> = SliceVec::new(&mut vec2_buf); vec2.extend([4, 5, 6].iter().copied());
+    /// # let mut vec: SliceVec<_> = unsafe { SliceVec::new(&mut vec_buf) }; vec.extend([1, 2, 3].iter().copied());
+    /// # let mut vec2: SliceVec<_> = unsafe { SliceVec::new(&mut vec2_buf) }; vec2.extend([4, 5, 6].iter().copied());
     /// assert_eq!(vec, [1, 2, 3]);
     /// assert_eq!(vec2, [4, 5, 6]);
     /// vec.split_off_into(1, &mut vec2);
@@ -1483,8 +1492,8 @@ impl<S: ?Sized + Storage> SimpleVec<S> {
     /// # use cl_generic_vec::{gvec, SliceVec, uninit_array};
     /// # let mut vec_buf = uninit_array::<_, 6>();
     /// # let mut vec2_buf = uninit_array::<_, 3>();
-    /// # let mut vec: SliceVec<_> = SliceVec::new(&mut vec_buf); vec.extend([1, 2, 3].iter().copied());
-    /// # let mut vec2: SliceVec<_> = SliceVec::new(&mut vec2_buf); vec2.extend([4, 5, 6].iter().copied());
+    /// # let mut vec: SliceVec<_> = unsafe { SliceVec::new(&mut vec_buf) }; vec.extend([1, 2, 3].iter().copied());
+    /// # let mut vec2: SliceVec<_> = unsafe { SliceVec::new(&mut vec2_buf) }; vec2.extend([4, 5, 6].iter().copied());
     /// assert_eq!(vec, [1, 2, 3]);
     /// assert_eq!(vec2, [4, 5, 6]);
     /// vec.append(&mut vec2);
@@ -1672,7 +1681,7 @@ impl<S: ?Sized + Storage> SimpleVec<S> {
     /// ```rust
     /// # let slice = [];
     /// # let mut buffer = cl_generic_vec::uninit_array::<_, 0>();
-    /// # let mut vec = cl_generic_vec::SliceVec::<()>::new(&mut buffer);
+    /// # let mut vec = unsafe { cl_generic_vec::SliceVec::<()>::new(&mut buffer) };
     /// vec.clear();
     /// vec.extend_from_slice(&slice);
     /// ```

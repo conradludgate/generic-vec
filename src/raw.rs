@@ -16,11 +16,9 @@ pub struct AllocError;
 /// Result of an allocation
 pub type AllocResult = Result<(), AllocError>;
 
-/// A type that can hold `T`s, and potentially
-/// reserve space for more `Self::Items`s
+/// A type that can hold `Self::Item`s, and potentially reserve space for more.
 ///
 /// # Safety
-///
 /// Other safe types rely on this trait being implemented correctly.
 /// See the safety requirements on each function
 pub unsafe trait Storage: AsRef<[MaybeUninit<Self::Item>]> + AsMut<[MaybeUninit<Self::Item>]> {
@@ -45,12 +43,11 @@ pub unsafe trait Storage: AsRef<[MaybeUninit<Self::Item>]> + AsMut<[MaybeUninit<
 
     /// Tries to reserve space for at least `new_capacity` elements
     ///
-    /// Returns `Ok(())` on success, `Err(AllocError)` if it is impossible to
-    /// set the `capacity` to at least `new_capacity`
-    ///
     /// # Safety
-    ///
     /// If `Ok(())` is returned, the `capacity` must be at least `new_capacity`
+    ///
+    /// # Errors
+    /// If enough space cannot be reserved, returns Err(AllocError)
     fn try_reserve(&mut self, new_capacity: usize) -> AllocResult;
 }
 

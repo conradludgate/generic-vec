@@ -306,14 +306,20 @@ impl<S: Storage> SimpleVec<S> {
     /// use cl_generic_vec::{ArrayVec, uninit_array};
     /// let vec = ArrayVec::<i32, 4>::with_storage(uninit_array());
     /// ```
-    pub fn with_storage(storage: S) -> Self { Self::with_storage_len(storage, 0) }
+    pub fn with_storage(storage: S) -> Self {
+        Self::with_storage_len(storage, 0)
+    }
 
-    fn with_storage_len(storage: S, len: usize) -> Self { Self { len, storage } }
+    fn with_storage_len(storage: S, len: usize) -> Self {
+        Self { len, storage }
+    }
 }
 
 impl<S: raw::StorageWithCapacity> SimpleVec<S> {
     /// Create a new empty `GenericVec` with the backend with at least the given capacity
-    pub fn with_capacity(capacity: usize) -> Self { Self::with_storage(S::with_capacity(capacity)) }
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self::with_storage(S::with_capacity(capacity))
+    }
 
     #[inline]
     #[allow(non_snake_case)]
@@ -392,7 +398,9 @@ impl<T> HeapVec<T> {
 #[cfg_attr(doc, doc(cfg(all(feature = "nightly", feature = "alloc"))))]
 impl<T, A: std::alloc::Allocator> HeapVec<T, A> {
     /// Create a new empty `HeapVec` with the given allocator
-    pub fn with_alloc(alloc: A) -> Self { Self::with_storage(Box::new_uninit_slice_in(0, alloc)) }
+    pub fn with_alloc(alloc: A) -> Self {
+        Self::with_storage(Box::new_uninit_slice_in(0, alloc))
+    }
 }
 
 impl<'a, T> SliceVec<'a, T> {
@@ -400,7 +408,9 @@ impl<'a, T> SliceVec<'a, T> {
     ///
     /// # Safety
     /// The contents of the slice should be completely uninitialised
-    pub unsafe fn new(slice: &'a mut [MaybeUninit<T>]) -> Self { Self::with_storage(slice) }
+    pub unsafe fn new(slice: &'a mut [MaybeUninit<T>]) -> Self {
+        Self::with_storage(slice)
+    }
 
     /// Create a new full `SliceVec`
     pub fn full(slice: &'a mut [T]) -> Self {
@@ -428,7 +438,9 @@ impl<S: Storage> SimpleVec<S> {
     ///
     /// If the given storage cannot hold type `T`, then this method will panic
     #[cfg(not(feature = "nightly"))]
-    pub unsafe fn from_raw_parts(len: usize, storage: S) -> Self { Self { len, storage } }
+    pub unsafe fn from_raw_parts(len: usize, storage: S) -> Self {
+        Self { len, storage }
+    }
 }
 
 #[cfg(feature = "nightly")]
@@ -445,7 +457,9 @@ impl<S: Storage> SimpleVec<S> {
     /// # Panic
     ///
     /// If the given storage cannot hold type `T`, then this method will panic
-    pub const unsafe fn from_raw_parts(len: usize, storage: S) -> Self { Self { len, storage } }
+    pub const unsafe fn from_raw_parts(len: usize, storage: S) -> Self {
+        Self { len, storage }
+    }
 }
 
 impl<S: ?Sized + Storage> SimpleVec<S> {
@@ -459,13 +473,19 @@ impl<S: ?Sized + Storage> SimpleVec<S> {
     }
 
     /// Returns true if and only if the vector contains no elements.
-    pub fn is_empty(&self) -> bool { self.len() == 0 }
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 
     /// Returns true if and only if the vector's length is equal to it's capacity.
-    pub fn is_full(&self) -> bool { self.len() == self.capacity() }
+    pub fn is_full(&self) -> bool {
+        self.len() == self.capacity()
+    }
 
     /// Returns the length of the spare capacity of the `GenericVec`
-    pub fn remaining_capacity(&self) -> usize { self.capacity().wrapping_sub(self.len()) }
+    pub fn remaining_capacity(&self) -> usize {
+        self.capacity().wrapping_sub(self.len())
+    }
 
     /// Set the length of a vector
     ///
@@ -473,13 +493,19 @@ impl<S: ?Sized + Storage> SimpleVec<S> {
     ///
     /// * `new_len` must be less than or equal to `capacity()`.
     /// * The elements at `old_len..new_len` must be initialized.
-    pub unsafe fn set_len_unchecked(&mut self, len: usize) { self.len = len; }
+    pub unsafe fn set_len_unchecked(&mut self, len: usize) {
+        self.len = len;
+    }
 
     /// Set the length of a vector
     ///
     /// # Panics
     /// If the length is set to be larger than the capacity
-    pub fn set_len(&mut self, len: usize) {
+    ///
+    /// # Safety
+    ///
+    /// * The elements at `old_len..new_len` must be initialized.
+    pub unsafe fn set_len(&mut self, len: usize) {
         // Safety
         //
         // The storage only contains initialized data, and we check that
@@ -496,22 +522,30 @@ impl<S: ?Sized + Storage> SimpleVec<S> {
     /// Extracts a slice containing the entire vector.
     ///
     /// Equivalent to &s[..].
-    pub fn as_slice(&self) -> &[S::Item] { self }
+    pub fn as_slice(&self) -> &[S::Item] {
+        self
+    }
 
     /// Extracts a mutable slice containing the entire vector.
     ///
     /// Equivalent to &mut s[..].
-    pub fn as_mut_slice(&mut self) -> &mut [S::Item] { self }
+    pub fn as_mut_slice(&mut self) -> &mut [S::Item] {
+        self
+    }
 
     /// Returns the underlying storage
-    pub fn storage(&self) -> &S { &self.storage }
+    pub fn storage(&self) -> &S {
+        &self.storage
+    }
 
     /// Returns the underlying storage
     ///
     /// # Safety
     ///
     /// You must not replace the storage
-    pub unsafe fn storage_mut(&mut self) -> &mut S { &mut self.storage }
+    pub unsafe fn storage_mut(&mut self) -> &mut S {
+        &mut self.storage
+    }
 
     /// Returns the remaining spare capacity of the vector as
     /// a [`SliceVec<'_, T>`](SliceVec).
@@ -536,19 +570,9 @@ impl<S: ?Sized + Storage> SimpleVec<S> {
     /// unsafe { cl_generic_vec::save_spare!(spare, &mut vec) }
     /// assert_eq!(vec, [0, 2]);
     /// ```
-    pub fn spare_capacity_mut(&mut self) -> SliceVec<'_, S::Item> {
-        // Safety
-        //
-        // The elements from `len..capacity` are guaranteed to be contain
-        // `A::BufferItem`s, as per `Storage`'s safety requirements
-        unsafe {
-            let len = self.len();
-            let cap = self.capacity();
-            SliceVec::new(core::slice::from_raw_parts_mut(
-                self.as_mut().as_mut_ptr().add(len).cast(),
-                cap.wrapping_sub(len),
-            ))
-        }
+    pub fn spare_capacity_mut(&mut self) -> &mut [MaybeUninit<S::Item>] {
+        let len = self.len();
+        &mut self.storage.as_mut()[len..]
     }
 
     /// Reserve enough space for at least `additional` elements
@@ -665,7 +689,8 @@ impl<S: ?Sized + Storage> SimpleVec<S> {
         // * the `ptr` always stays in bounds
 
         self.reserve(additional);
-        let mut writer = self.spare_capacity_mut();
+        let spare = self.spare_capacity_mut();
+        let mut writer = unsafe { SliceVec::new(spare) };
 
         for _ in 0..additional {
             unsafe {
@@ -674,7 +699,10 @@ impl<S: ?Sized + Storage> SimpleVec<S> {
         }
 
         unsafe {
-            save_spare!(writer, self);
+            // don't drop the new data!
+            let writer = core::mem::ManuallyDrop::new(writer);
+            let len = writer.len() + self.len();
+            self.set_len_unchecked(len);
         }
     }
 
@@ -750,7 +778,9 @@ impl<S: ?Sized + Storage> SimpleVec<S> {
     /// Clears the vector, removing all values.
     ///
     /// Note that this method has no effect on the allocated capacity of the vector.
-    pub fn clear(&mut self) { self.truncate(0); }
+    pub fn clear(&mut self) {
+        self.truncate(0);
+    }
 
     /// Appends an element to the back of a collection.
     ///
@@ -1623,7 +1653,9 @@ impl<S: ?Sized + Storage> SimpleVec<S> {
     where
         F: FnMut(&mut S::Item) -> bool,
     {
-        fn not<F: FnMut(&mut T) -> bool, T>(mut f: F) -> impl FnMut(&mut T) -> bool { move |value| !f(value) }
+        fn not<F: FnMut(&mut T) -> bool, T>(mut f: F) -> impl FnMut(&mut T) -> bool {
+            move |value| !f(value)
+        }
         self.drain_filter(.., not(f));
     }
 

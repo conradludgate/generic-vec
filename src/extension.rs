@@ -1,4 +1,4 @@
-use crate::{SimpleVec, Storage};
+use crate::{SimpleVec, Storage, SliceVec};
 
 pub trait Extension<T> {
     unsafe fn extend_from_slice(&mut self, slice: &[T]);
@@ -10,7 +10,8 @@ fn clone_extend_from_slice<S: ?Sized + Storage>(vec: &mut SimpleVec<S>, slice: &
 where
     S::Item: Clone,
 {
-    let mut spare = vec.spare_capacity_mut();
+    let spare = vec.spare_capacity_mut();
+    let mut writer = unsafe { SliceVec::new(spare) };
 
     for value in slice.iter().cloned() {
         // Safety
@@ -19,13 +20,13 @@ where
         // which has the pre-condition that there must be at least enough remaining capacity
         // for the slice. So it is safe to write the contents of the slice
         unsafe {
-            spare.push_unchecked(value);
+            writer.push_unchecked(value);
         }
     }
 
     unsafe {
-        let spare = core::mem::ManuallyDrop::new(spare);
-        let len = spare.len() + vec.len();
+        let writer = core::mem::ManuallyDrop::new(writer);
+        let len = writer.len() + vec.len();
         vec.set_len_unchecked(len);
     }
 }
@@ -34,7 +35,8 @@ fn clone_grow<S: ?Sized + Storage>(vec: &mut SimpleVec<S>, additional: usize, va
 where
     S::Item: Clone,
 {
-    let mut spare = vec.spare_capacity_mut();
+    let spare = vec.spare_capacity_mut();
+    let mut writer = unsafe { SliceVec::new(spare) };
 
     if additional != 0 {
         // Safety
@@ -44,16 +46,16 @@ where
         // for the slice. So it is safe to write the contents of the slice
         unsafe {
             for _ in 1..additional {
-                spare.push_unchecked(value.clone());
+                writer.push_unchecked(value.clone());
             }
 
-            spare.push_unchecked(value);
+            writer.push_unchecked(value);
         }
     }
 
     unsafe {
-        let spare = core::mem::ManuallyDrop::new(spare);
-        let len = spare.len() + vec.len();
+        let writer = core::mem::ManuallyDrop::new(writer);
+        let len = writer.len() + vec.len();
         vec.set_len_unchecked(len);
     }
 }
